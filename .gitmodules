@@ -3,4 +3,4 @@
 	url = https://github.com/swiftlyfalling/SQLiteLib.git
 [submodule "SQLCipher"]
 	path = SQLCipher
-	url = https://dev.azure.com/neotreks/Ford%20Off%20Roads/_git/sqlcipher.git
+	url = https://neotreks@dev.azure.com/neotreks/Ford%20Off%20Roads/_git/sqlcipher.git
