@@ -1,5 +1,5 @@
 Pod::Spec.new do |s|
-  s.name     = 'GRDB.swift'
+  s.name     = 'AccuTerraGRDB.swift'
   s.version  = '5.6.0'
   
   s.license  = { :type => 'MIT', :file => 'LICENSE' }
