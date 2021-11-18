@@ -1,6 +1,6 @@
 Pod::Spec.new do |s|
   s.name     = 'AccuTerraGRDB.swift'
-  s.version  = '5.6.0'
+  s.version  = '5.6.1'
   
   s.license  = { :type => 'MIT', :file => 'LICENSE' }
   s.summary  = 'A toolkit for SQLite databases, with a focus on application development.'
@@ -8,12 +8,12 @@ Pod::Spec.new do |s|
   s.author   = { 'Gwendal Roué' => 'gr@pierlis.com' }
   s.source = {
     "git": "https://github.com/neotreks/GRDB.swift.git",
-    "tag": "AccuTerrav5.6.0"
+    "tag": "AccuTerrav5.6.1"
   }
   s.module_name = 'GRDB'
   
   s.swift_versions = ['5.3.2']
-  s.ios.deployment_target = '10.0'
+  s.ios.deployment_target = '13.0'
   s.osx.deployment_target = '10.10'
   s.watchos.deployment_target = '2.0'
   s.tvos.deployment_target = '9.0'
