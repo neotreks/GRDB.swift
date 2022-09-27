@@ -8,7 +8,7 @@ public struct FTS3: VirtualTableModule {
     /// Options for Latin script characters. Matches the raw "remove_diacritics"
     /// tokenizer argument.
     ///
-    /// See https://www.sqlite.org/fts3.html
+    /// See <https://www.sqlite.org/fts3.html>
     public enum Diacritics {
         /// Do not remove diacritics from Latin script characters. This
         /// option matches the raw "remove_diacritics=0" tokenizer argument.
@@ -37,7 +37,40 @@ public struct FTS3: VirtualTableModule {
     ///     try db.create(virtualTable: "document", using: FTS3()) { t in
     ///         t.column("content")
     ///     }
-    public init() {
+    public init() { }
+    
+    /// Returns an array of tokens found in the string argument.
+    ///
+    /// For example:
+    ///
+    ///     try FTS3.tokenize("SQLite database")  // ["sqlite", "database"]
+    ///     try FTS3.tokenize("Gustave Doré")     // ["gustave", "doré"])
+    ///
+    /// Results can be altered with an explicit tokenizer - default is `.simple`.
+    /// See <https://www.sqlite.org/fts3.html#tokenizer>.
+    ///
+    ///     try FTS3.tokenize("SQLite database", withTokenizer: .porter)   // ["sqlite", "databas"]
+    ///     try FTS3.tokenize("Gustave Doré", withTokenizer: .unicode61()) // ["gustave", "dore"])
+    ///
+    /// Tokenization is performed by the `fts3tokenize` virtual table described
+    /// at <https://www.sqlite.org/fts3.html#querying_tokenizers>.
+    public static func tokenize(
+        _ string: String,
+        withTokenizer tokenizer: FTS3TokenizerDescriptor = .simple)
+    throws -> [String]
+    {
+        try DatabaseQueue().inDatabase { db in
+            var tokenizerChunks: [String] = []
+            tokenizerChunks.append(tokenizer.name)
+            for option in tokenizer.arguments {
+                tokenizerChunks.append("\"\(option)\"")
+            }
+            let tokenizerSQL = tokenizerChunks.joined(separator: ", ")
+            try db.execute(sql: "CREATE VIRTUAL TABLE tokens USING fts3tokenize(\(tokenizerSQL))")
+            return try String.fetchAll(db, sql: """
+                SELECT token FROM tokens WHERE input = ? ORDER BY position
+                """, arguments: [string])
+        }
     }
     
     // MARK: - VirtualTableModule Adoption
@@ -48,7 +81,7 @@ public struct FTS3: VirtualTableModule {
     /// Reserved; part of the VirtualTableModule protocol.
     ///
     /// See Database.create(virtualTable:using:)
-    public func makeTableDefinition() -> FTS3TableDefinition {
+    public func makeTableDefinition(configuration: VirtualTableConfiguration) -> FTS3TableDefinition {
         FTS3TableDefinition()
     }
     
@@ -93,7 +126,7 @@ public final class FTS3TableDefinition {
     ///     try db.create(virtualTable: "document", using: FTS3()) { t in
     ///         t.tokenizer = .porter
     ///     }
-    /// See https://www.sqlite.org/fts3.html#creating_and_destroying_fts_tables
+    /// See <https://www.sqlite.org/fts3.html#creating_and_destroying_fts_tables>
     public var tokenizer: FTS3TokenizerDescriptor?
     
     /// Appends a table column.

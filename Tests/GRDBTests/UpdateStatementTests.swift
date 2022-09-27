@@ -3,7 +3,7 @@ import GRDB
 
 class UpdateStatementTests : GRDBTestCase {
     
-    override func setup(_ dbWriter: DatabaseWriter) throws {
+    override func setup(_ dbWriter: some DatabaseWriter) throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("createPersons") { db in
             try db.execute(sql: """
@@ -20,32 +20,38 @@ class UpdateStatementTests : GRDBTestCase {
     func testTrailingSemicolonAndWhiteSpaceIsAcceptedAndOptional() throws {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inTransaction { db in
-            try db.makeUpdateStatement(sql: "INSERT INTO persons (name) VALUES ('Arthur');").execute()
-            try db.makeUpdateStatement(sql: "INSERT INTO persons (name) VALUES ('Barbara')\n \t").execute()
-            try db.makeUpdateStatement(sql: "INSERT INTO persons (name) VALUES ('Craig'); ; ;").execute()
-            try db.makeUpdateStatement(sql: "INSERT INTO persons (name) VALUES ('Daniel');\n \t").execute()
+            try db.makeStatement(sql: "INSERT INTO persons (name) VALUES ('Arthur');").execute()
+            try db.makeStatement(sql: "INSERT INTO persons (name) VALUES ('Barbara')\n \t").execute()
+            try db.makeStatement(sql: "INSERT INTO persons (name) VALUES ('Craig'); ; ;").execute()
+            try db.makeStatement(sql: "INSERT INTO persons (name) VALUES ('Daniel');\n \t").execute()
+            try db.makeStatement(sql: "INSERT INTO persons (name) VALUES ('Eugene')\r\n").execute()
+            try db.makeStatement(sql: "INSERT INTO persons (name) VALUES ('Fiona')\u{000C}" /* \f */).execute()
             return .commit
         }
         try dbQueue.inDatabase { db in
             let names = try String.fetchAll(db, sql: "SELECT name FROM persons ORDER BY name")
-            XCTAssertEqual(names, ["Arthur", "Barbara", "Craig", "Daniel"])
+            XCTAssertEqual(names, ["Arthur", "Barbara", "Craig", "Daniel", "Eugene", "Fiona"])
         }
     }
     
     func testStatementSQL() throws {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
-            try XCTAssertEqual(db.makeUpdateStatement(sql: "INSERT INTO persons (name, age) VALUES ('Arthur', ?)").sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
-            try XCTAssertEqual(db.makeUpdateStatement(sql: " INSERT INTO persons (name, age) VALUES ('Arthur', ?) ; ").sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
+            try XCTAssertEqual(db.makeStatement(sql: "INSERT INTO persons (name, age) VALUES ('Arthur', ?)").sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
+            try XCTAssertEqual(db.makeStatement(sql: " INSERT INTO persons (name, age) VALUES ('Arthur', ?) ; ").sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
+            try XCTAssertEqual(db.makeStatement(sql: " INSERT INTO persons (name, age) VALUES ('Arthur', ?)\r\n").sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
+            try XCTAssertEqual(db.makeStatement(sql: " INSERT INTO persons (name, age) VALUES ('Arthur', ?)\t").sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
+            try XCTAssertEqual(db.makeStatement(sql: " INSERT INTO persons (name, age) VALUES ('Arthur', ?)\n").sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
+            try XCTAssertEqual(db.makeStatement(sql: " INSERT INTO persons (name, age) VALUES ('Arthur', ?)\u{000C}" /* \f */).sql, "INSERT INTO persons (name, age) VALUES ('Arthur', ?)")
         }
     }
-
+    
     func testArrayStatementArguments() throws {
         let dbQueue = try makeDatabaseQueue()
         
         try dbQueue.inTransaction { db in
             
-            let statement = try db.makeUpdateStatement(sql: "INSERT INTO persons (name, age) VALUES (?, ?)")
+            let statement = try db.makeStatement(sql: "INSERT INTO persons (name, age) VALUES (?, ?)")
             let persons: [[DatabaseValueConvertible?]] = [
                 ["Arthur", 41],
                 ["Barbara", nil],
@@ -72,7 +78,7 @@ class UpdateStatementTests : GRDBTestCase {
         
         try dbQueue.inTransaction { db in
             
-            let statement = try db.makeUpdateStatement(sql: "INSERT INTO persons (name, age) VALUES (?, ?)")
+            let statement = try db.makeStatement(sql: "INSERT INTO persons (name, age) VALUES (?, ?)")
             let persons: [[DatabaseValueConvertible?]] = [
                 ["Arthur", 41],
                 ["Barbara", nil],
@@ -100,7 +106,7 @@ class UpdateStatementTests : GRDBTestCase {
         
         try dbQueue.inTransaction { db in
             
-            let statement = try db.makeUpdateStatement(sql: "INSERT INTO persons (name, age) VALUES (:name, :age)")
+            let statement = try db.makeStatement(sql: "INSERT INTO persons (name, age) VALUES (:name, :age)")
             let persons: [[String: DatabaseValueConvertible?]] = [
                 ["name": "Arthur", "age": 41],
                 ["name": "Barbara", "age": nil],
@@ -127,7 +133,7 @@ class UpdateStatementTests : GRDBTestCase {
         
         try dbQueue.inTransaction { db in
             
-            let statement = try db.makeUpdateStatement(sql: "INSERT INTO persons (name, age) VALUES (:name, :age)")
+            let statement = try db.makeStatement(sql: "INSERT INTO persons (name, age) VALUES (:name, :age)")
             let persons: [[String: DatabaseValueConvertible?]] = [
                 ["name": "Arthur", "age": 41],
                 ["name": "Barbara", "age": nil],
@@ -156,7 +162,7 @@ class UpdateStatementTests : GRDBTestCase {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
             try db.execute(sql: "SELECT 1")
-            let statement = try db.makeUpdateStatement(sql: "SELECT 1")
+            let statement = try db.makeStatement(sql: "SELECT 1")
             try statement.execute()
         }
     }
@@ -170,7 +176,7 @@ class UpdateStatementTests : GRDBTestCase {
                 return index
             })
             try db.execute(sql: "SELECT seq() UNION ALL SELECT seq() UNION ALL SELECT seq()")
-            let statement = try db.makeUpdateStatement(sql: "SELECT seq() UNION ALL SELECT seq() UNION ALL SELECT seq()")
+            let statement = try db.makeStatement(sql: "SELECT seq() UNION ALL SELECT seq() UNION ALL SELECT seq()")
             try statement.execute()
         }
         XCTAssertEqual(index, 3 + 3)
@@ -184,6 +190,8 @@ class UpdateStatementTests : GRDBTestCase {
             try db.execute(sql: ";")
             try db.execute(sql: ";;")
             try db.execute(sql: " \n;\t; ")
+            try db.execute(sql: "\r\n")
+            try db.execute(sql: "\u{000C}") // \f
             try db.execute(sql: "-- comment")
             try db.execute(sql: "-- comment\\n; -----ignored")
         }
@@ -210,7 +218,7 @@ class UpdateStatementTests : GRDBTestCase {
     func testExecuteMultipleStatementWithTrailingSemicolonAndWhiteSpace() throws {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
-            try db.execute(sql: "CREATE TABLE wines (name TEXT, color INT); CREATE TABLE books (name TEXT, age INT);\n \t")
+            try db.execute(sql: "CREATE TABLE wines (name TEXT, color INT); CREATE TABLE books (name TEXT, age INT);\r\n \t")
             XCTAssertTrue(try db.tableExists("wines"))
             XCTAssertTrue(try db.tableExists("books"))
         }
@@ -292,6 +300,18 @@ class UpdateStatementTests : GRDBTestCase {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inTransaction { db in
             do {
+                try db.execute(sql: "", arguments: [1])
+                XCTFail()
+            } catch let error as DatabaseError {
+                XCTAssertEqual(error.resultCode, .SQLITE_MISUSE)
+                XCTAssertEqual(error.message!, "wrong number of statement arguments: 1")
+                XCTAssertEqual(error.description, "SQLite error 21: wrong number of statement arguments: 1")
+            }
+            return .rollback
+        }
+        
+        try dbQueue.inTransaction { db in
+            do {
                 try db.execute(sql: """
                     INSERT INTO persons (name, age) VALUES ('Arthur', ?);
                     INSERT INTO persons (name, age) VALUES ('Arthur', ?);
@@ -302,6 +322,37 @@ class UpdateStatementTests : GRDBTestCase {
                 XCTAssertEqual(error.message!, "wrong number of statement arguments: 3")
                 XCTAssertEqual(error.description, "SQLite error 21: wrong number of statement arguments: 3")
             }
+            
+            // Both statements were run
+            let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM persons")!
+            XCTAssertEqual(count, 2)
+            
+            return .rollback
+        }
+    }
+    
+    func testExecuteMultipleStatementWithTooFewArguments() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.inTransaction { db in
+            do {
+                try db.execute(sql: """
+                    INSERT INTO persons (name, age) VALUES ('Arthur', ?);
+                    INSERT INTO persons (name, age) VALUES ('Arthur', ?);
+                    """, arguments: [41])
+                XCTFail()
+            } catch let error as DatabaseError {
+                XCTAssertEqual(error.resultCode, .SQLITE_MISUSE)
+                XCTAssertEqual(error.message!, "wrong number of statement arguments: 0")
+                XCTAssertEqual(error.description, """
+                    SQLite error 21: wrong number of statement arguments: 0 \
+                    - while executing `INSERT INTO persons (name, age) VALUES ('Arthur', ?)`
+                    """)
+            }
+            
+            // First statement did run
+            let count = try Int.fetchOne(db, sql: "SELECT COUNT(*) FROM persons")!
+            XCTAssertEqual(count, 1)
+            
             return .rollback
         }
     }
@@ -310,7 +361,7 @@ class UpdateStatementTests : GRDBTestCase {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
             do {
-                _ = try db.makeUpdateStatement(sql: "UPDATE blah SET id = 12")
+                _ = try db.makeStatement(sql: "UPDATE blah SET id = 12")
                 XCTFail()
             } catch let error as DatabaseError {
                 XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
@@ -325,13 +376,20 @@ class UpdateStatementTests : GRDBTestCase {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
             do {
-                _ = try db.makeUpdateStatement(sql: "UPDATE persons SET age = 1; UPDATE persons SET age = 2;")
+                _ = try db.makeStatement(sql: "UPDATE persons SET age = 1; UPDATE persons SET age = 2;")
                 XCTFail("Expected error")
             } catch let error as DatabaseError {
                 XCTAssertEqual(error.resultCode, .SQLITE_MISUSE)
-                XCTAssertEqual(error.message!, "Multiple statements found. To execute multiple statements, use Database.execute(sql:) instead.")
+                XCTAssertEqual(error.message!, """
+                    Multiple statements found. To execute multiple statements, \
+                    use Database.execute(sql:) or Database.allStatements(sql:) instead.
+                    """)
                 XCTAssertEqual(error.sql!, "UPDATE persons SET age = 1; UPDATE persons SET age = 2;")
-                XCTAssertEqual(error.description, "SQLite error 21: Multiple statements found. To execute multiple statements, use Database.execute(sql:) instead. - while executing `UPDATE persons SET age = 1; UPDATE persons SET age = 2;`")
+                XCTAssertEqual(error.description, """
+                    SQLite error 21: Multiple statements found. To execute multiple statements, \
+                    use Database.execute(sql:) or Database.allStatements(sql:) instead. \
+                    - while executing `UPDATE persons SET age = 1; UPDATE persons SET age = 2;`
+                    """)
             }
         }
     }
@@ -340,13 +398,20 @@ class UpdateStatementTests : GRDBTestCase {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.inDatabase { db in
             do {
-                _ = try db.makeUpdateStatement(sql: "UPDATE persons SET age = 1;x")
+                _ = try db.makeStatement(sql: "UPDATE persons SET age = 1;x")
                 XCTFail("Expected error")
             } catch let error as DatabaseError {
                 XCTAssertEqual(error.resultCode, .SQLITE_MISUSE)
-                XCTAssertEqual(error.message!, "Multiple statements found. To execute multiple statements, use Database.execute(sql:) instead.")
+                XCTAssertEqual(error.message!, """
+                    Multiple statements found. To execute multiple statements, \
+                    use Database.execute(sql:) or Database.allStatements(sql:) instead.
+                    """)
                 XCTAssertEqual(error.sql!, "UPDATE persons SET age = 1;x")
-                XCTAssertEqual(error.description, "SQLite error 21: Multiple statements found. To execute multiple statements, use Database.execute(sql:) instead. - while executing `UPDATE persons SET age = 1;x`")
+                XCTAssertEqual(error.description, """
+                    SQLite error 21: Multiple statements found. To execute multiple statements, \
+                    use Database.execute(sql:) or Database.allStatements(sql:) instead. \
+                    - while executing `UPDATE persons SET age = 1;x`
+                    """)
             }
         }
     }
@@ -354,7 +419,7 @@ class UpdateStatementTests : GRDBTestCase {
     func testExecuteSQLLiteral() throws {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.write { db in
-            try db.execute(literal: SQLLiteral(sql: """
+            try db.execute(literal: SQL(sql: """
                 CREATE TABLE t(a);
                 INSERT INTO t(a) VALUES (?);
                 INSERT INTO t(a) VALUES (?);

@@ -2,8 +2,9 @@ import GRDB
 
 /// The Player struct.
 ///
+/// Identifiable conformance supports type-safe GRDB primary key methods.
 /// Hashable conformance supports table view updates
-struct Player: Hashable {
+struct Player: Identifiable, Hashable {
     /// The player id.
     ///
     /// Int64 is the recommended type for auto-incremented database ids.
@@ -30,7 +31,7 @@ extension Player {
     }
     
     /// Creates a new player with random name and random score
-    static func newRandom() -> Player {
+    static func makeRandom() -> Player {
         Player(id: nil, name: randomName(), score: randomScore())
     }
     
@@ -49,7 +50,7 @@ extension Player {
 
 /// Make Player a Codable Record.
 ///
-/// See https://github.com/groue/GRDB.swift/blob/master/README.md#records
+/// See <https://github.com/groue/GRDB.swift/blob/master/README.md#records>
 extension Player: Codable, FetchableRecord, MutablePersistableRecord {
     // Define database columns from CodingKeys
     fileprivate enum Columns {
@@ -58,8 +59,8 @@ extension Player: Codable, FetchableRecord, MutablePersistableRecord {
     }
     
     /// Updates a player id after it has been inserted in the database.
-    mutating func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
@@ -67,9 +68,9 @@ extension Player: Codable, FetchableRecord, MutablePersistableRecord {
 
 /// Define some player requests used by the application.
 ///
-/// See https://github.com/groue/GRDB.swift/blob/master/README.md#requests
-/// See https://github.com/groue/GRDB.swift/blob/master/Documentation/GoodPracticesForDesigningRecordTypes.md
-extension DerivableRequest where RowDecoder == Player {
+/// See <https://github.com/groue/GRDB.swift/blob/master/README.md#requests>
+/// See <https://github.com/groue/GRDB.swift/blob/master/Documentation/GoodPracticesForDesigningRecordTypes.md>
+extension DerivableRequest<Player> {
     /// A request of players ordered by name.
     ///
     /// For example:

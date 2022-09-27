@@ -1,9 +1,9 @@
 import XCTest
 import GRDB
 
-// Person has a RowID primary key, and a overriden insert() method.
+// Person has a RowID primary key, and an overridden insert() method.
 private class Person : Record, Hashable {
-    var id: Int64!
+    var id: Int64?
     var name: String!
     var age: Int?
     var creationDate: Date!
@@ -35,32 +35,31 @@ private class Person : Record, Hashable {
         "persons"
     }
     
-    required init(row: Row) {
-        id = row[Column.rowID]
+    required init(row: Row) throws {
+        id = row[.rowID]
         age = row["age"]
         name = row["name"]
         creationDate = row["creationDate"]
-        super.init(row: row)
+        try super.init(row: row)
     }
     
-    override func encode(to container: inout PersistenceContainer) {
-        container[Column.rowID] = id
+    override func encode(to container: inout PersistenceContainer) throws {
+        container[.rowID] = id
         container["name"] = name
         container["age"] = age
         container["creationDate"] = creationDate
     }
     
-    override func insert(_ db: Database) throws {
-        // This is implicitely tested with the NOT NULL constraint on creationDate
+    override func willInsert(_ db: Database) throws {
         if creationDate == nil {
             creationDate = Date()
         }
-        
-        try super.insert(db)
+        try super.willInsert(db)
     }
     
-    override func didInsert(with rowID: Int64, for column: String?) {
-        self.id = rowID
+    override func didInsert(_ inserted: InsertionSuccess) {
+        super.didInsert(inserted)
+        id = inserted.rowID
     }
     
     static func == (lhs: Person, rhs: Person) -> Bool {
@@ -78,9 +77,12 @@ private class Person : Record, Hashable {
     }
 }
 
+@available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *)
+extension Person: Identifiable { }
+
 class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
     
-    override func setup(_ dbWriter: DatabaseWriter) throws {
+    override func setup(_ dbWriter: some DatabaseWriter) throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("createPerson", migrate: Person.setup)
         try migrator.migrate(dbWriter)
@@ -98,7 +100,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             XCTAssertTrue(record.id != nil)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -111,7 +113,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             XCTAssertTrue(record.id != nil)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
             return .rollback
         }
         // This is debatable, actually.
@@ -125,7 +127,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             try record.insert(db)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -163,7 +165,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             try record.insert(db)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -195,7 +197,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             } catch let PersistenceError.recordNotFound(databaseTableName: databaseTableName, key: key) {
                 // Expected PersistenceError.recordNotFound
                 XCTAssertEqual(databaseTableName, "persons")
-                XCTAssertEqual(key, ["rowid": record.id.databaseValue])
+                XCTAssertEqual(key, ["rowid": record.id!.databaseValue])
             }
         }
     }
@@ -209,7 +211,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             try record.update(db)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -225,7 +227,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             } catch let PersistenceError.recordNotFound(databaseTableName: databaseTableName, key: key) {
                 // Expected PersistenceError.recordNotFound
                 XCTAssertEqual(databaseTableName, "persons")
-                XCTAssertEqual(key, ["rowid": record.id.databaseValue])
+                XCTAssertEqual(key, ["rowid": record.id!.databaseValue])
             }
         }
     }
@@ -242,7 +244,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             XCTAssertTrue(record.id != nil)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -253,7 +255,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             try record.save(db)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -268,7 +270,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             try record.save(db)   // Actual update
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -281,7 +283,7 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
             try record.save(db)
             
             let row = try Row.fetchOne(db, sql: "SELECT *, rowid FROM persons WHERE rowid = ?", arguments: [record.id])!
-            assert(record, isEncodedIn: row)
+            try assert(record, isEncodedIn: row)
         }
     }
     
@@ -568,6 +570,22 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
                 XCTAssertTrue(try cursor.next() == nil) // end
             }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let ids: [Int64] = []
+                    let cursor = try Person.fetchCursor(db, ids: ids)
+                    try XCTAssertNil(cursor.next())
+                }
+                
+                do {
+                    let ids = [record1.id!, record2.id!]
+                    let cursor = try Person.fetchCursor(db, ids: ids)
+                    let fetchedRecords = try [cursor.next()!, cursor.next()!]
+                    XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+                    XCTAssertTrue(try cursor.next() == nil) // end
+                }
+            }
         }
     }
     
@@ -590,6 +608,21 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 let fetchedRecords = try Person.fetchAll(db, keys: ids)
                 XCTAssertEqual(fetchedRecords.count, 2)
                 XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+            }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let ids: [Int64] = []
+                    let fetchedRecords = try Person.fetchAll(db, ids: ids)
+                    XCTAssertEqual(fetchedRecords.count, 0)
+                }
+                
+                do {
+                    let ids = [record1.id!, record2.id!]
+                    let fetchedRecords = try Person.fetchAll(db, ids: ids)
+                    XCTAssertEqual(fetchedRecords.count, 2)
+                    XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+                }
             }
         }
     }
@@ -614,6 +647,21 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 XCTAssertEqual(fetchedRecords.count, 2)
                 XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
             }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let ids: [Int64] = []
+                    let fetchedRecords = try Person.fetchSet(db, ids: ids)
+                    XCTAssertEqual(fetchedRecords.count, 0)
+                }
+                
+                do {
+                    let ids = [record1.id!, record2.id!]
+                    let fetchedRecords = try Person.fetchSet(db, ids: ids)
+                    XCTAssertEqual(fetchedRecords.count, 2)
+                    XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+                }
+            }
         }
     }
     
@@ -636,6 +684,20 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 XCTAssertTrue(fetchedRecord.age == record.age)
                 XCTAssertTrue(abs(fetchedRecord.creationDate.timeIntervalSince(record.creationDate)) < 1e-3)    // ISO-8601 is precise to the millisecond.
                 XCTAssertEqual(lastSQLQuery, "SELECT *, \"rowid\" FROM \"persons\" WHERE \"rowid\" = \(record.id!)")
+            }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let fetchedRecord = try Person.fetchOne(db, id: record.id!)!
+                    XCTAssertTrue(fetchedRecord.id == record.id)
+                    XCTAssertTrue(fetchedRecord.name == record.name)
+                    XCTAssertTrue(fetchedRecord.age == record.age)
+                    XCTAssertTrue(abs(fetchedRecord.creationDate.timeIntervalSince(record.creationDate)) < 1e-3)    // ISO-8601 is precise to the millisecond.
+                    XCTAssertEqual(lastSQLQuery, "SELECT *, \"rowid\" FROM \"persons\" WHERE \"rowid\" = \(record.id!)")
+                }
+                do {
+                    try XCTAssertNil(Person.fetchOne(db, id: nil))
+                }
             }
         }
     }
@@ -664,6 +726,22 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
                 XCTAssertTrue(try cursor.next() == nil) // end
             }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let ids: [Int64] = []
+                    let cursor = try Person.filter(ids: ids).fetchCursor(db)
+                    try XCTAssertNil(cursor.next())
+                }
+                
+                do {
+                    let ids = [record1.id!, record2.id!]
+                    let cursor = try Person.filter(ids: ids).fetchCursor(db)
+                    let fetchedRecords = try [cursor.next()!, cursor.next()!]
+                    XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+                    XCTAssertTrue(try cursor.next() == nil) // end
+                }
+            }
         }
     }
     
@@ -686,6 +764,21 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 let fetchedRecords = try Person.filter(keys: ids).fetchAll(db)
                 XCTAssertEqual(fetchedRecords.count, 2)
                 XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+            }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let ids: [Int64] = []
+                    let fetchedRecords = try Person.filter(ids: ids).fetchAll(db)
+                    XCTAssertEqual(fetchedRecords.count, 0)
+                }
+                
+                do {
+                    let ids = [record1.id!, record2.id!]
+                    let fetchedRecords = try Person.filter(ids: ids).fetchAll(db)
+                    XCTAssertEqual(fetchedRecords.count, 2)
+                    XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+                }
             }
         }
     }
@@ -710,6 +803,21 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 XCTAssertEqual(fetchedRecords.count, 2)
                 XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
             }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let ids: [Int64] = []
+                    let fetchedRecords = try Person.filter(ids: ids).fetchSet(db)
+                    XCTAssertEqual(fetchedRecords.count, 0)
+                }
+                
+                do {
+                    let ids = [record1.id!, record2.id!]
+                    let fetchedRecords = try Person.filter(ids: ids).fetchSet(db)
+                    XCTAssertEqual(fetchedRecords.count, 2)
+                    XCTAssertEqual(Set(fetchedRecords.map(\.id)), Set(ids))
+                }
+            }
         }
     }
     
@@ -732,6 +840,20 @@ class RecordPrimaryKeyHiddenRowIDTests : GRDBTestCase {
                 XCTAssertTrue(fetchedRecord.age == record.age)
                 XCTAssertTrue(abs(fetchedRecord.creationDate.timeIntervalSince(record.creationDate)) < 1e-3)    // ISO-8601 is precise to the millisecond.
                 XCTAssertEqual(lastSQLQuery, "SELECT *, \"rowid\" FROM \"persons\" WHERE \"rowid\" = \(record.id!)")
+            }
+            
+            if #available(OSX 10.15, iOS 13.0, tvOS 13.0, watchOS 6, *) {
+                do {
+                    let fetchedRecord = try Person.filter(id: record.id!).fetchOne(db)!
+                    XCTAssertTrue(fetchedRecord.id == record.id)
+                    XCTAssertTrue(fetchedRecord.name == record.name)
+                    XCTAssertTrue(fetchedRecord.age == record.age)
+                    XCTAssertTrue(abs(fetchedRecord.creationDate.timeIntervalSince(record.creationDate)) < 1e-3)    // ISO-8601 is precise to the millisecond.
+                    XCTAssertEqual(lastSQLQuery, "SELECT *, \"rowid\" FROM \"persons\" WHERE \"rowid\" = \(record.id!)")
+                }
+                do {
+                    try XCTAssertNil(Person.filter(id: nil).fetchOne(db))
+                }
             }
         }
     }

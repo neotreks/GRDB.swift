@@ -2,6 +2,7 @@ extension Database {
     
     // MARK: - Database Schema
     
+    // TODO: deprecate just before GRDB 6
     /// Creates a database table.
     ///
     ///     try db.create(table: "place") { t in
@@ -12,8 +13,11 @@ extension Database {
     ///         t.column("latitude", .double).notNull()
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html and
-    /// https://www.sqlite.org/withoutrowid.html
+    /// See <https://www.sqlite.org/lang_createtable.html> and
+    /// <https://www.sqlite.org/withoutrowid.html>
+    ///
+    /// - warning: This method is sunsetted. You should prefer
+    ///   `create(table:options:body:)` instead.
     ///
     /// - parameters:
     ///     - name: The table name.
@@ -24,27 +28,57 @@ extension Database {
     ///     - withoutRowID: If true, uses WITHOUT ROWID optimization.
     ///     - body: A closure that defines table columns and constraints.
     /// - throws: A DatabaseError whenever an SQLite error occurs.
+    @_disfavoredOverload
     public func create(
         table name: String,
         temporary: Bool = false,
         ifNotExists: Bool = false,
         withoutRowID: Bool = false,
-        body: (TableDefinition) -> Void)
+        body: (TableDefinition) throws -> Void)
+    throws
+    {
+        var options: TableOptions = []
+        if temporary { options.insert(.temporary) }
+        if ifNotExists { options.insert(.ifNotExists) }
+        if withoutRowID { options.insert(.withoutRowID) }
+        try create(table: name, options: options, body: body)
+    }
+    
+    /// Creates a database table.
+    ///
+    ///     try db.create(table: "place") { t in
+    ///         t.autoIncrementedPrimaryKey("id")
+    ///         t.column("title", .text)
+    ///         t.column("favorite", .boolean).notNull().default(false)
+    ///         t.column("longitude", .double).notNull()
+    ///         t.column("latitude", .double).notNull()
+    ///     }
+    ///
+    /// See <https://www.sqlite.org/lang_createtable.html> and
+    /// <https://www.sqlite.org/withoutrowid.html>
+    ///
+    /// - parameters:
+    ///     - name: The table name.
+    ///     - options: Table creation options.
+    ///     - body: A closure that defines table columns and constraints.
+    /// - throws: A DatabaseError whenever an SQLite error occurs.
+    public func create(
+        table name: String,
+        options: TableOptions = [],
+        body: (TableDefinition) throws -> Void)
     throws
     {
         let definition = TableDefinition(
             name: name,
-            temporary: temporary,
-            ifNotExists: ifNotExists,
-            withoutRowID: withoutRowID)
-        body(definition)
+            options: options)
+        try body(definition)
         let sql = try definition.sql(self)
         try execute(sql: sql)
     }
     
     /// Renames a database table.
     ///
-    /// See https://www.sqlite.org/lang_altertable.html
+    /// See <https://www.sqlite.org/lang_altertable.html>
     ///
     /// - throws: A DatabaseError whenever an SQLite error occurs.
     public func rename(table name: String, to newName: String) throws {
@@ -57,7 +91,7 @@ extension Database {
     ///         t.add(column: "url", .text)
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_altertable.html
+    /// See <https://www.sqlite.org/lang_altertable.html>
     ///
     /// - parameters:
     ///     - name: The table name.
@@ -72,11 +106,51 @@ extension Database {
     
     /// Deletes a database table.
     ///
-    /// See https://www.sqlite.org/lang_droptable.html
+    /// See <https://www.sqlite.org/lang_droptable.html>
     ///
     /// - throws: A DatabaseError whenever an SQLite error occurs.
     public func drop(table name: String) throws {
         try execute(sql: "DROP TABLE \(name.quotedDatabaseIdentifier)")
+    }
+    
+    // TODO: deprecate just before GRDB 6
+    /// Creates an index.
+    ///
+    ///     try db.create(index: "playerByEmail", on: "player", columns: ["email"])
+    ///
+    /// SQLite can also index expressions (https://www.sqlite.org/expridx.html)
+    /// and use specific collations. To create such an index, use a raw SQL
+    /// query.
+    ///
+    ///     try db.execute(sql: "CREATE INDEX ...")
+    ///
+    /// See <https://www.sqlite.org/lang_createindex.html>
+    ///
+    /// - warning: This method is sunsetted. You should prefer
+    ///   `create(index:on:columns:options:condition:)` instead.
+    ///
+    /// - parameters:
+    ///     - name: The index name.
+    ///     - table: The name of the indexed table.
+    ///     - columns: The indexed columns.
+    ///     - unique: If true, creates a unique index.
+    ///     - ifNotExists: If true, no error is thrown if index already exists.
+    ///     - condition: If not nil, creates a partial index
+    ///       (see <https://www.sqlite.org/partialindex.html>).
+    @_disfavoredOverload
+    public func create(
+        index name: String,
+        on table: String,
+        columns: [String],
+        unique: Bool = false,
+        ifNotExists: Bool = false,
+        condition: (any SQLExpressible)? = nil)
+    throws
+    {
+        var options: IndexOptions = []
+        if ifNotExists { options.insert(.ifNotExists) }
+        if unique { options.insert(.unique) }
+        try create(index: name, on: table, columns: columns, options: options, condition: condition)
     }
     
     /// Creates an index.
@@ -89,31 +163,28 @@ extension Database {
     ///
     ///     try db.execute(sql: "CREATE INDEX ...")
     ///
-    /// See https://www.sqlite.org/lang_createindex.html
+    /// See <https://www.sqlite.org/lang_createindex.html>
     ///
     /// - parameters:
     ///     - name: The index name.
     ///     - table: The name of the indexed table.
     ///     - columns: The indexed columns.
-    ///     - unique: If true, creates a unique index.
-    ///     - ifNotExists: If false, no error is thrown if index already exists.
+    ///     - options: Index creation options.
     ///     - condition: If not nil, creates a partial index
-    ///       (see https://www.sqlite.org/partialindex.html).
+    ///       (see <https://www.sqlite.org/partialindex.html>).
     public func create(
         index name: String,
         on table: String,
         columns: [String],
-        unique: Bool = false,
-        ifNotExists: Bool = false,
-        condition: SQLExpressible? = nil)
+        options: IndexOptions = [],
+        condition: (any SQLExpressible)? = nil)
     throws
     {
         let definition = IndexDefinition(
             name: name,
             table: table,
             columns: columns,
-            unique: unique,
-            ifNotExists: ifNotExists,
+            options: options,
             condition: condition?.sqlExpression)
         let sql = try definition.sql(self)
         try execute(sql: sql)
@@ -121,7 +192,7 @@ extension Database {
     
     /// Deletes a database index.
     ///
-    /// See https://www.sqlite.org/lang_dropindex.html
+    /// See <https://www.sqlite.org/lang_dropindex.html>
     ///
     /// - throws: A DatabaseError whenever an SQLite error occurs.
     public func drop(index name: String) throws {
@@ -133,7 +204,7 @@ extension Database {
     /// This method is useful when the definition of a collation sequence
     /// has changed.
     ///
-    /// See https://www.sqlite.org/lang_reindex.html
+    /// See <https://www.sqlite.org/lang_reindex.html>
     ///
     /// - throws: A DatabaseError whenever an SQLite error occurs.
     public func reindex(collation: Database.CollationName) throws {
@@ -145,12 +216,35 @@ extension Database {
     /// This method is useful when the definition of a collation sequence
     /// has changed.
     ///
-    /// See https://www.sqlite.org/lang_reindex.html
+    /// See <https://www.sqlite.org/lang_reindex.html>
     ///
     /// - throws: A DatabaseError whenever an SQLite error occurs.
     public func reindex(collation: DatabaseCollation) throws {
         try reindex(collation: Database.CollationName(rawValue: collation.name))
     }
+}
+
+/// Table creation options
+public struct TableOptions: OptionSet {
+    /// :nodoc:
+    public let rawValue: Int
+    
+    /// :nodoc:
+    public init(rawValue: Int) { self.rawValue = rawValue }
+    
+    /// Only creates the table if it does not already exist.
+    public static let ifNotExists = TableOptions(rawValue: 1 << 0)
+    
+    /// Creates a temporary table.
+    public static let temporary = TableOptions(rawValue: 1 << 1)
+    
+    /// Creates a without rowid table. See <https://www.sqlite.org/withoutrowid.html>
+    public static let withoutRowID = TableOptions(rawValue: 1 << 2)
+    
+#if GRDBCUSTOMSQLITE
+    /// Creates a strict table. See <https://www.sqlite.org/stricttables.html>
+    public static let strict = TableOptions(rawValue: 1 << 3)
+#endif
 }
 
 /// The TableDefinition class lets you define table columns and constraints.
@@ -162,7 +256,7 @@ extension Database {
 ///         t.column(...)
 ///     }
 ///
-/// See https://www.sqlite.org/lang_createtable.html
+/// See <https://www.sqlite.org/lang_createtable.html>
 public final class TableDefinition {
     private typealias KeyConstraint = (
         columns: [String],
@@ -177,21 +271,40 @@ public final class TableDefinition {
         var deferred: Bool
     }
     
+    private enum ColumnItem {
+        case definition(ColumnDefinition)
+        case literal(SQL)
+        
+        var columnDefinition: ColumnDefinition? {
+            switch self {
+            case let .definition(def): return def
+            case .literal: return nil
+            }
+        }
+        
+        func sql(_ db: Database, tableName: String, primaryKeyColumns: [String]?) throws -> String {
+            switch self {
+            case let .definition(def):
+                return try def.sql(db, tableName: tableName, primaryKeyColumns: primaryKeyColumns)
+            case let .literal(sqlLiteral):
+                let context = SQLGenerationContext(db, argumentsSink: .forRawSQL)
+                return try sqlLiteral.sql(context)
+            }
+        }
+    }
+    
     private let name: String
-    private let temporary: Bool
-    private let ifNotExists: Bool
-    private let withoutRowID: Bool
-    private var columns: [ColumnDefinition] = []
+    private let options: TableOptions
+    private var columns: [ColumnItem] = []
     private var primaryKeyConstraint: KeyConstraint?
     private var uniqueKeyConstraints: [KeyConstraint] = []
     private var foreignKeyConstraints: [ForeignKeyConstraint] = []
     private var checkConstraints: [SQLExpression] = []
+    private var literalConstraints: [SQL] = []
     
-    init(name: String, temporary: Bool, ifNotExists: Bool, withoutRowID: Bool) {
+    init(name: String, options: TableOptions) {
         self.name = name
-        self.temporary = temporary
-        self.ifNotExists = ifNotExists
-        self.withoutRowID = withoutRowID
+        self.options = options
     }
     
     /// Defines the auto-incremented primary key.
@@ -215,11 +328,11 @@ public final class TableDefinition {
     /// asynchronous process, even if this row gets deleted and a new one is
     /// inserted in between.
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#primkeyconst and
-    /// https://www.sqlite.org/lang_createtable.html#rowid
+    /// See <https://www.sqlite.org/lang_createtable.html#primkeyconst> and
+    /// <https://www.sqlite.org/lang_createtable.html#rowid>
     ///
     /// - parameter conflictResolution: An optional conflict resolution
-    ///   (see https://www.sqlite.org/lang_conflict.html).
+    ///   (see <https://www.sqlite.org/lang_conflict.html>).
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
     public func autoIncrementedPrimaryKey(
@@ -236,7 +349,7 @@ public final class TableDefinition {
     ///         t.column("name", .text)
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#tablecoldef
+    /// See <https://www.sqlite.org/lang_createtable.html#tablecoldef>
     ///
     /// - parameter name: the column name.
     /// - parameter type: the eventual column type.
@@ -245,8 +358,33 @@ public final class TableDefinition {
     @discardableResult
     public func column(_ name: String, _ type: Database.ColumnType? = nil) -> ColumnDefinition {
         let column = ColumnDefinition(name: name, type: type)
-        columns.append(column)
+        columns.append(.definition(column))
         return column
+    }
+    
+    /// Appends a table column defined with raw SQL.
+    ///
+    ///     try db.create(table: "player") { t in
+    ///         t.column(sql: "name TEXT")
+    ///     }
+    public func column(sql: String) {
+        columns.append(.literal(SQL(sql: sql)))
+    }
+    
+    /// Appends a table column defined with an SQL *literal*.
+    ///
+    /// Literals allow you to safely embed raw values in your SQL, without any
+    /// risk of syntax errors or SQL injection:
+    ///
+    ///     // CREATE TABLE player (
+    ///     //   name TEXT DEFAULT 'Anonymous'
+    ///     // )
+    ///     let defaultName = "Anonymous"
+    ///     try db.create(table: "player") { t in
+    ///         t.column(literal: "name TEXT DEFAULT \(defaultName)")
+    ///     }
+    public func column(literal: SQL) {
+        columns.append(.literal(literal))
     }
     
     /// Defines the table primary key.
@@ -257,12 +395,12 @@ public final class TableDefinition {
     ///         t.primaryKey(["citizenID", "countryCode"])
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#primkeyconst and
-    /// https://www.sqlite.org/lang_createtable.html#rowid
+    /// See <https://www.sqlite.org/lang_createtable.html#primkeyconst> and
+    /// <https://www.sqlite.org/lang_createtable.html#rowid>
     ///
     /// - parameter columns: The primary key columns.
     /// - parameter conflictResolution: An optional conflict resolution
-    ///   (see https://www.sqlite.org/lang_conflict.html).
+    ///   (see <https://www.sqlite.org/lang_conflict.html>).
     public func primaryKey(_ columns: [String], onConflict conflictResolution: Database.ConflictResolution? = nil) {
         guard primaryKeyConstraint == nil else {
             // Programmer error
@@ -279,11 +417,11 @@ public final class TableDefinition {
     ///         t.uniqueKey(["latitude", "longitude"])
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#uniqueconst
+    /// See <https://www.sqlite.org/lang_createtable.html#uniqueconst>
     ///
     /// - parameter columns: The unique key columns.
     /// - parameter conflictResolution: An optional conflict resolution
-    ///   (see https://www.sqlite.org/lang_conflict.html).
+    ///   (see <https://www.sqlite.org/lang_conflict.html>).
     public func uniqueKey(_ columns: [String], onConflict conflictResolution: Database.ConflictResolution? = nil) {
         uniqueKeyConstraints.append((columns: columns, conflictResolution: conflictResolution))
     }
@@ -297,7 +435,7 @@ public final class TableDefinition {
     ///         t.foreignKey(["citizenID", "countryCode"], references: "citizenship", onDelete: .cascade)
     ///     }
     ///
-    /// See https://www.sqlite.org/foreignkeys.html
+    /// See <https://www.sqlite.org/foreignkeys.html>
     ///
     /// - parameters:
     ///     - columns: The foreign key columns.
@@ -308,7 +446,7 @@ public final class TableDefinition {
     ///     - deleteAction: Optional action when the referenced row is deleted.
     ///     - updateAction: Optional action when the referenced row is updated.
     ///     - deferred: If true, defines a deferred foreign key constraint.
-    ///       See https://www.sqlite.org/foreignkeys.html#fk_deferred.
+    ///       See <https://www.sqlite.org/foreignkeys.html#fk_deferred>.
     public func foreignKey(
         _ columns: [String],
         references table: String,
@@ -336,10 +474,10 @@ public final class TableDefinition {
     ///         t.check(personalPhone != nil || workPhone != nil)
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#ckconst
+    /// See <https://www.sqlite.org/lang_createtable.html#ckconst>
     ///
     /// - parameter condition: The checked condition
-    public func check(_ condition: SQLExpressible) {
+    public func check(_ condition: some SQLExpressible) {
         checkConstraints.append(condition.sqlExpression)
     }
     
@@ -351,11 +489,43 @@ public final class TableDefinition {
     ///         t.check(sql: "personalPhone IS NOT NULL OR workPhone IS NOT NULL")
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#ckconst
+    /// See <https://www.sqlite.org/lang_createtable.html#ckconst>
     ///
     /// - parameter sql: An SQL snippet
     public func check(sql: String) {
-        checkConstraints.append(SQLLiteral(sql: sql).sqlExpression)
+        checkConstraints.append(SQL(sql: sql).sqlExpression)
+    }
+    
+    /// Appends a table constraint defined with raw SQL.
+    ///
+    ///     // CREATE TABLE player (
+    ///     //   ...
+    ///     //   CHECK (score >= 0)
+    ///     // )
+    ///     try db.create(table: "player") { t in
+    ///         ...
+    ///         t.constraint(sql: "CHECK (score >= 0)")
+    ///     }
+    public func constraint(sql: String) {
+        literalConstraints.append(SQL(sql: sql))
+    }
+    
+    /// Appends a table constraint defined with an SQL *literal*.
+    ///
+    /// Literals allow you to safely embed raw values in your SQL, without any
+    /// risk of syntax errors or SQL injection:
+    ///
+    ///     // CREATE TABLE player (
+    ///     //   ...
+    ///     //   CHECK (score >= 0)
+    ///     // )
+    ///     let minScore = 0
+    ///     try db.create(table: "player") { t in
+    ///         ...
+    ///         t.constraint(literal: "CHECK (score >= \(minScore))")
+    ///     }
+    public func constraint(literal: SQL) {
+        literalConstraints.append(literal)
     }
     
     fileprivate func sql(_ db: Database) throws -> String {
@@ -364,11 +534,11 @@ public final class TableDefinition {
         do {
             var chunks: [String] = []
             chunks.append("CREATE")
-            if temporary {
+            if options.contains(.temporary) {
                 chunks.append("TEMPORARY")
             }
             chunks.append("TABLE")
-            if ifNotExists {
+            if options.contains(.ifNotExists) {
                 chunks.append("IF NOT EXISTS")
             }
             chunks.append(name.quotedDatabaseIdentifier)
@@ -376,8 +546,8 @@ public final class TableDefinition {
             let primaryKeyColumns: [String]
             if let (columns, _) = primaryKeyConstraint {
                 primaryKeyColumns = columns
-            } else if let index = columns.firstIndex(where: { $0.primaryKey != nil }) {
-                primaryKeyColumns = [columns[index].name]
+            } else if let column = columns.lazy.compactMap(\.columnDefinition).first(where: { $0.primaryKey != nil }) {
+                primaryKeyColumns = [column.name]
             } else {
                 // WITHOUT ROWID optimization requires a primary key. If the
                 // user sets withoutRowID, but does not define a primary key,
@@ -461,17 +631,37 @@ public final class TableDefinition {
                     items.append(chunks.joined(separator: " "))
                 }
                 
+                for literal in literalConstraints {
+                    let context = SQLGenerationContext(db, argumentsSink: .forRawSQL)
+                    try items.append(literal.sql(context))
+                }
+                
                 chunks.append("(\(items.joined(separator: ", ")))")
             }
             
-            if withoutRowID {
-                chunks.append("WITHOUT ROWID")
+            var tableOptions: [String] = []
+            
+#if GRDBCUSTOMSQLITE
+            if options.contains(.strict) {
+                tableOptions.append("STRICT")
             }
+#endif
+            
+            if options.contains(.withoutRowID) {
+                tableOptions.append("WITHOUT ROWID")
+            }
+            
+            if !tableOptions.isEmpty {
+                chunks.append(tableOptions.joined(separator: ", "))
+            }
+            
             statements.append(chunks.joined(separator: " "))
         }
         
+        var indexOptions: IndexOptions = []
+        if options.contains(.ifNotExists) { indexOptions.insert(.ifNotExists) }
         let indexStatements = try columns
-            .compactMap { $0.indexDefinition(in: name, ifNotExists: ifNotExists) }
+            .compactMap { $0.columnDefinition?.indexDefinition(in: name, options: indexOptions) }
             .map { try $0.sql(db) }
         statements.append(contentsOf: indexStatements)
         return statements.joined(separator: "; ")
@@ -487,13 +677,15 @@ public final class TableDefinition {
 ///         t.add(column: ...)
 ///     }
 ///
-/// See https://www.sqlite.org/lang_altertable.html
+/// See <https://www.sqlite.org/lang_altertable.html>
 public final class TableAlteration {
     private let name: String
     
     private enum TableAlterationKind {
         case add(ColumnDefinition)
+        case addColumnLiteral(SQL)
         case rename(old: String, new: String)
+        case drop(String)
     }
     
     private var alterations: [TableAlterationKind] = []
@@ -508,7 +700,7 @@ public final class TableAlteration {
     ///         t.add(column: "url", .text)
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_altertable.html
+    /// See <https://www.sqlite.org/lang_altertable.html>
     ///
     /// - parameter name: the column name.
     /// - parameter type: the column type.
@@ -521,6 +713,30 @@ public final class TableAlteration {
         return column
     }
     
+    /// Appends a table column defined with raw SQL.
+    ///
+    ///     // ALTER TABLE player ADD COLUMN name TEXT
+    ///     try db.alter(table: "player") { t in
+    ///         t.addColumn(sql: "name TEXT")
+    ///     }
+    public func addColumn(sql: String) {
+        alterations.append(.addColumnLiteral(SQL(sql: sql)))
+    }
+    
+    /// Appends a table column defined with an SQL *literal*.
+    ///
+    /// Literals allow you to safely embed raw values in your SQL, without any
+    /// risk of syntax errors or SQL injection:
+    ///
+    ///     // ALTER TABLE player ADD COLUMN name TEXT DEFAULT 'Anonymous'
+    ///     let defaultName = "Anonymous"
+    ///     try db.alter(table: "player") { t in
+    ///         t.addColumn(literal: "name TEXT DEFAULT \(defaultName)")
+    ///     }
+    public func addColumn(literal: SQL) {
+        alterations.append(.addColumnLiteral(literal))
+    }
+    
     #if GRDBCUSTOMSQLITE || GRDBCIPHER
     /// Renames a column in a table.
     ///
@@ -528,12 +744,25 @@ public final class TableAlteration {
     ///         t.rename(column: "url", to: "homeURL")
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_altertable.html
+    /// See <https://www.sqlite.org/lang_altertable.html>
     ///
     /// - parameter name: the column name to rename.
     /// - parameter newName: the new name of the column.
     public func rename(column name: String, to newName: String) {
         _rename(column: name, to: newName)
+    }
+    
+    /// Drops a column from the table.
+    ///
+    ///     try db.alter(table: "player") { t in
+    ///         t.drop(column: "age")
+    ///     }
+    ///
+    /// See <https://www.sqlite.org/lang_altertable.html>
+    ///
+    /// - Parameter name: the column name to drop.
+    public func drop(column name: String) {
+        _drop(column: name)
     }
     #else
     /// Renames a column in a table.
@@ -542,7 +771,7 @@ public final class TableAlteration {
     ///         t.rename(column: "url", to: "homeURL")
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_altertable.html
+    /// See <https://www.sqlite.org/lang_altertable.html>
     ///
     /// - parameter name: the column name to rename.
     /// - parameter newName: the new name of the column.
@@ -550,10 +779,28 @@ public final class TableAlteration {
     public func rename(column name: String, to newName: String) {
         _rename(column: name, to: newName)
     }
+    
+    /// Drops a column from the table.
+    ///
+    ///     try db.alter(table: "player") { t in
+    ///         t.drop(column: "age")
+    ///     }
+    ///
+    /// See <https://www.sqlite.org/lang_altertable.html>
+    ///
+    /// - Parameter name: the column name to drop.
+    @available(iOS 15.0, tvOS 15.0, watchOS 8.0, macOS 12.0, *) // SQLite 3.35.0+
+    public func drop(column name: String) {
+        _drop(column: name)
+    }
     #endif
     
     private func _rename(column name: String, to newName: String) {
         alterations.append(.rename(old: name, new: newName))
+    }
+    
+    private func _drop(column name: String) {
+        alterations.append(.drop(name))
     }
     
     fileprivate func sql(_ db: Database) throws -> String {
@@ -570,9 +817,20 @@ public final class TableAlteration {
                 let statement = chunks.joined(separator: " ")
                 statements.append(statement)
                 
-                if let indexDefinition = column.indexDefinition(in: name, ifNotExists: false) {
+                if let indexDefinition = column.indexDefinition(in: name) {
                     try statements.append(indexDefinition.sql(db))
                 }
+                
+            case let .addColumnLiteral(sqlLiteral):
+                var chunks: [String] = []
+                chunks.append("ALTER TABLE")
+                chunks.append(name.quotedDatabaseIdentifier)
+                chunks.append("ADD COLUMN")
+                let context = SQLGenerationContext(db, argumentsSink: .forRawSQL)
+                try chunks.append(sqlLiteral.sql(context))
+                let statement = chunks.joined(separator: " ")
+                statements.append(statement)
+                
             case let .rename(oldName, newName):
                 var chunks: [String] = []
                 chunks.append("ALTER TABLE")
@@ -581,6 +839,15 @@ public final class TableAlteration {
                 chunks.append(oldName.quotedDatabaseIdentifier)
                 chunks.append("TO")
                 chunks.append(newName.quotedDatabaseIdentifier)
+                let statement = chunks.joined(separator: " ")
+                statements.append(statement)
+                
+            case let .drop(column):
+                var chunks: [String] = []
+                chunks.append("ALTER TABLE")
+                chunks.append(name.quotedDatabaseIdentifier)
+                chunks.append("DROP COLUMN")
+                chunks.append(column.quotedDatabaseIdentifier)
                 let statement = chunks.joined(separator: " ")
                 statements.append(statement)
             }
@@ -602,8 +869,8 @@ public final class TableAlteration {
 ///         t.add(column: ...) // ColumnDefinition
 ///     }
 ///
-/// See https://www.sqlite.org/lang_createtable.html and
-/// https://www.sqlite.org/lang_altertable.html
+/// See <https://www.sqlite.org/lang_createtable.html> and
+/// <https://www.sqlite.org/lang_altertable.html>
 public final class ColumnDefinition {
     enum Index {
         case none
@@ -622,7 +889,7 @@ public final class ColumnDefinition {
     /// The `GeneratedColumnQualification` enum defines whether a generated
     /// column sis virtual or stored.
     ///
-    /// See https://sqlite.org/gencol.html#virtual_versus_stored_columns
+    /// See <https://sqlite.org/gencol.html#virtual_versus_stored_columns>
     public enum GeneratedColumnQualification {
         case virtual
         case stored
@@ -655,12 +922,12 @@ public final class ColumnDefinition {
     ///         t.column("id", .integer).primaryKey()
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#primkeyconst and
-    /// https://www.sqlite.org/lang_createtable.html#rowid
+    /// See <https://www.sqlite.org/lang_createtable.html#primkeyconst> and
+    /// <https://www.sqlite.org/lang_createtable.html#rowid>
     ///
     /// - parameters:
     ///     - conflictResolution: An optional conflict resolution
-    ///       (see https://www.sqlite.org/lang_conflict.html).
+    ///       (see <https://www.sqlite.org/lang_conflict.html>).
     ///     - autoincrement: If true, the primary key is autoincremented.
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
@@ -679,10 +946,10 @@ public final class ColumnDefinition {
     ///         t.column("name", .text).notNull()
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#notnullconst
+    /// See <https://www.sqlite.org/lang_createtable.html#notnullconst>
     ///
     /// - parameter conflictResolution: An optional conflict resolution
-    ///   (see https://www.sqlite.org/lang_conflict.html).
+    ///   (see <https://www.sqlite.org/lang_conflict.html>).
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
     public func notNull(onConflict conflictResolution: Database.ConflictResolution? = nil) -> Self {
@@ -696,10 +963,10 @@ public final class ColumnDefinition {
     ///         t.column("email", .text).unique()
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#uniqueconst
+    /// See <https://www.sqlite.org/lang_createtable.html#uniqueconst>
     ///
     /// - parameter conflictResolution: An optional conflict resolution
-    ///   (see https://www.sqlite.org/lang_conflict.html).
+    ///   (see <https://www.sqlite.org/lang_conflict.html>).
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
     public func unique(onConflict conflictResolution: Database.ConflictResolution? = nil) -> Self {
@@ -713,7 +980,7 @@ public final class ColumnDefinition {
     ///         t.column("email", .text).indexed()
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#uniqueconst
+    /// See <https://www.sqlite.org/lang_createtable.html#uniqueconst>
     ///
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
@@ -730,13 +997,13 @@ public final class ColumnDefinition {
     ///         t.column("name", .text).check { length($0) > 0 }
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#ckconst
+    /// See <https://www.sqlite.org/lang_createtable.html#ckconst>
     ///
     /// - parameter condition: A closure whose argument is an Column that
     ///   represents the defined column, and returns the expression to check.
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
-    public func check(_ condition: (Column) -> SQLExpressible) -> Self {
+    public func check(_ condition: (Column) -> any SQLExpressible) -> Self {
         checkConstraints.append(condition(Column(name)).sqlExpression)
         return self
     }
@@ -747,13 +1014,13 @@ public final class ColumnDefinition {
     ///         t.column("name", .text).check(sql: "LENGTH(name) > 0")
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#ckconst
+    /// See <https://www.sqlite.org/lang_createtable.html#ckconst>
     ///
     /// - parameter sql: An SQL snippet.
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
     public func check(sql: String) -> Self {
-        checkConstraints.append(SQLLiteral(sql: sql).sqlExpression)
+        checkConstraints.append(SQL(sql: sql).sqlExpression)
         return self
     }
     
@@ -763,12 +1030,12 @@ public final class ColumnDefinition {
     ///         t.column("name", .text).defaults(to: "Anonymous")
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#dfltval
+    /// See <https://www.sqlite.org/lang_createtable.html#dfltval>
     ///
     /// - parameter value: A DatabaseValueConvertible value.
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
-    public func defaults(to value: DatabaseValueConvertible) -> Self {
+    public func defaults(to value: some DatabaseValueConvertible) -> Self {
         defaultExpression = value.sqlExpression
         return self
     }
@@ -779,13 +1046,13 @@ public final class ColumnDefinition {
     ///         t.column("creationDate", .DateTime).defaults(sql: "CURRENT_TIMESTAMP")
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html#dfltval
+    /// See <https://www.sqlite.org/lang_createtable.html#dfltval>
     ///
     /// - parameter sql: An SQL snippet.
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
     public func defaults(sql: String) -> Self {
-        defaultExpression = SQLLiteral(sql: sql).sqlExpression
+        defaultExpression = SQL(sql: sql).sqlExpression
         return self
     }
     
@@ -795,7 +1062,7 @@ public final class ColumnDefinition {
     ///         t.column("email", .text).collate(.nocase)
     ///     }
     ///
-    /// See https://www.sqlite.org/datatype3.html#collation
+    /// See <https://www.sqlite.org/datatype3.html#collation>
     ///
     /// - parameter collation: An Database.CollationName.
     /// - returns: Self so that you can further refine the column definition.
@@ -811,7 +1078,7 @@ public final class ColumnDefinition {
     ///         t.column("name", .text).collate(.localizedCaseInsensitiveCompare)
     ///     }
     ///
-    /// See https://www.sqlite.org/datatype3.html#collation
+    /// See <https://www.sqlite.org/datatype3.html#collation>
     ///
     /// - parameter collation: A custom DatabaseCollation.
     /// - returns: Self so that you can further refine the column definition.
@@ -831,7 +1098,7 @@ public final class ColumnDefinition {
     ///         t.column("totalScore", .integer).generatedAs(sql: "score + bonus", .stored)
     ///     }
     ///
-    /// See https://sqlite.org/gencol.html. Note particularly the limitations of
+    /// See <https://sqlite.org/gencol.html>. Note particularly the limitations of
     /// generated columns, e.g. they may not have a default value.
     ///
     /// - parameters:
@@ -845,7 +1112,7 @@ public final class ColumnDefinition {
         _ qualification: GeneratedColumnQualification = .virtual)
     -> Self
     {
-        let expression = SQLLiteral(sql: sql).sqlExpression
+        let expression = SQL(sql: sql).sqlExpression
         generatedColumnConstraint = GeneratedColumnConstraint(
             expression: expression,
             qualification: qualification)
@@ -861,7 +1128,7 @@ public final class ColumnDefinition {
     ///         t.column("totalScore", .integer).generatedAs(Column("score") + Column("bonus"), .stored)
     ///     }
     ///
-    /// See https://sqlite.org/gencol.html. Note particularly the limitations of
+    /// See <https://sqlite.org/gencol.html>. Note particularly the limitations of
     /// generated columns, e.g. they may not have a default value.
     ///
     /// - parameters:
@@ -871,7 +1138,7 @@ public final class ColumnDefinition {
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
     public func generatedAs(
-        _ expression: SQLExpressible,
+        _ expression: some SQLExpressible,
         _ qualification: GeneratedColumnQualification = .virtual)
     -> Self
     {
@@ -888,7 +1155,7 @@ public final class ColumnDefinition {
     ///         t.column("authorId", .integer).references("author", onDelete: .cascade)
     ///     }
     ///
-    /// See https://www.sqlite.org/foreignkeys.html
+    /// See <https://www.sqlite.org/foreignkeys.html>
     ///
     /// - parameters
     ///     - table: The referenced table.
@@ -897,7 +1164,7 @@ public final class ColumnDefinition {
     ///     - deleteAction: Optional action when the referenced row is deleted.
     ///     - updateAction: Optional action when the referenced row is updated.
     ///     - deferred: If true, defines a deferred foreign key constraint.
-    ///       See https://www.sqlite.org/foreignkeys.html#fk_deferred.
+    ///       See <https://www.sqlite.org/foreignkeys.html#fk_deferred>.
     /// - returns: Self so that you can further refine the column definition.
     @discardableResult
     public func references(
@@ -1022,7 +1289,7 @@ public final class ColumnDefinition {
         return chunks.joined(separator: " ")
     }
     
-    fileprivate func indexDefinition(in table: String, ifNotExists: Bool) -> IndexDefinition? {
+    fileprivate func indexDefinition(in table: String, options: IndexOptions = []) -> IndexDefinition? {
         switch index {
         case .none: return nil
         case .unique: return nil
@@ -1031,29 +1298,42 @@ public final class ColumnDefinition {
                 name: "\(table)_on_\(name)",
                 table: table,
                 columns: [name],
-                unique: false,
-                ifNotExists: ifNotExists,
+                options: options,
                 condition: nil)
         }
     }
+}
+
+/// Table creation options
+public struct IndexOptions: OptionSet {
+    /// :nodoc:
+    public let rawValue: Int
+    
+    /// :nodoc:
+    public init(rawValue: Int) { self.rawValue = rawValue }
+    
+    /// Only creates the index if it does not already exist.
+    public static let ifNotExists = IndexOptions(rawValue: 1 << 0)
+    
+    /// Creates a unique index.
+    public static let unique = IndexOptions(rawValue: 1 << 1)
 }
 
 private struct IndexDefinition {
     let name: String
     let table: String
     let columns: [String]
-    let unique: Bool
-    let ifNotExists: Bool
+    let options: IndexOptions
     let condition: SQLExpression?
     
     func sql(_ db: Database) throws -> String {
         var chunks: [String] = []
         chunks.append("CREATE")
-        if unique {
+        if options.contains(.unique) {
             chunks.append("UNIQUE")
         }
         chunks.append("INDEX")
-        if ifNotExists {
+        if options.contains(.ifNotExists) {
             chunks.append("IF NOT EXISTS")
         }
         chunks.append(name.quotedDatabaseIdentifier)

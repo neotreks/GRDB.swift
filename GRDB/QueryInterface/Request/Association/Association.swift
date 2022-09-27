@@ -4,8 +4,7 @@ import Foundation
 ///
 /// :nodoc:
 public protocol _Association {
-    init(sqlAssociation: _SQLAssociation)
-    var _sqlAssociation: _SQLAssociation { get }
+    var _sqlAssociation: _SQLAssociation { get set }
 }
 
 /// The base protocol for all associations that define a connection between two
@@ -45,35 +44,55 @@ public protocol Association: _Association, DerivableRequest {
 }
 
 extension Association {
-    /// :nodoc:
-    public func _including(all association: _SQLAssociation) -> Self {
-        mapDestinationRelation { $0._including(all: association) }
+    /// Returns self modified with the *update* function.
+    func with(_ update: (inout Self) throws -> Void) rethrows -> Self {
+        var result = self
+        try update(&result)
+        return result
     }
     
-    /// :nodoc:
-    public func _including(optional association: _SQLAssociation) -> Self {
-        mapDestinationRelation { $0._including(optional: association) }
-    }
-    
-    /// :nodoc:
-    public func _including(required association: _SQLAssociation) -> Self {
-        mapDestinationRelation { $0._including(required: association) }
-    }
-    
-    /// :nodoc:
-    public func _joining(optional association: _SQLAssociation) -> Self {
-        mapDestinationRelation { $0._joining(optional: association) }
-    }
-    
-    /// :nodoc:
-    public func _joining(required association: _SQLAssociation) -> Self {
-        mapDestinationRelation { $0._joining(required: association) }
+    /// Returns self with destination relation modified with the *update* function.
+    fileprivate func withDestinationRelation(_ update: (inout SQLRelation) throws -> Void) rethrows -> Self {
+        var result = self
+        try update(&result._sqlAssociation.destination.relation)
+        return result
     }
 }
 
 extension Association {
-    fileprivate func mapDestinationRelation(_ transform: (SQLRelation) -> SQLRelation) -> Self {
-        .init(sqlAssociation: _sqlAssociation.map(\.destination.relation, transform))
+    /// :nodoc:
+    public func _including(all association: _SQLAssociation) -> Self {
+        withDestinationRelation { relation in
+            relation = relation._including(all: association)
+        }
+    }
+    
+    /// :nodoc:
+    public func _including(optional association: _SQLAssociation) -> Self {
+        withDestinationRelation { relation in
+            relation = relation._including(optional: association)
+        }
+    }
+    
+    /// :nodoc:
+    public func _including(required association: _SQLAssociation) -> Self {
+        withDestinationRelation { relation in
+            relation = relation._including(required: association)
+        }
+    }
+    
+    /// :nodoc:
+    public func _joining(optional association: _SQLAssociation) -> Self {
+        withDestinationRelation { relation in
+            relation = relation._joining(optional: association)
+        }
+    }
+    
+    /// :nodoc:
+    public func _joining(required association: _SQLAssociation) -> Self {
+        withDestinationRelation { relation in
+            relation = relation._joining(required: association)
+        }
     }
 }
 
@@ -126,7 +145,7 @@ extension Association {
     ///
     ///     let playerInfos = PlayerInfo.all().fetchAll(db)
     ///     print(playerInfos.first?.team)
-    public func forKey(_ codingKey: CodingKey) -> Self {
+    public func forKey(_ codingKey: some CodingKey) -> Self {
         forKey(codingKey.stringValue)
     }
     
@@ -159,11 +178,14 @@ extension Association {
     ///         .including(required: Player.team.aliased(teamAlias))
     ///         .filter(sql: "custom.color = ?", arguments: ["red"])
     public func aliased(_ alias: TableAlias) -> Self {
-        mapDestinationRelation { $0.aliased(alias) }
+        withDestinationRelation { relation in
+            relation = relation.aliased(alias)
+        }
     }
 }
 
-extension Association where Self: SelectionRequest {
+// SelectionRequest conformance
+extension Association {
     
     /// Creates an association which selects *selection*.
     ///
@@ -186,8 +208,12 @@ extension Association where Self: SelectionRequest {
     ///         .select { db in [Column("id")] }
     ///         .select { db in [Column("color") }
     ///     var request = Player.including(required: association)
-    public func select(_ selection: @escaping (Database) throws -> [SQLSelectable]) -> Self {
-        mapDestinationRelation { $0.select { try selection($0).map(\.sqlSelection) } }
+    public func selectWhenConnected(_ selection: @escaping (Database) throws -> [any SQLSelectable]) -> Self {
+        withDestinationRelation { relation in
+            relation = relation.selectWhenConnected { db in
+                try selection(db).map(\.sqlSelection)
+            }
+        }
     }
     
     /// Creates an association which appends *selection*.
@@ -203,12 +229,17 @@ extension Association where Self: SelectionRequest {
     ///         .select([Column("color")])
     ///         .annotated(with: { db in [Column("name")] })
     ///     var request = Player.including(required: association)
-    public func annotated(with selection: @escaping (Database) throws -> [SQLSelectable]) -> Self {
-        mapDestinationRelation { $0.annotated { try selection($0).map(\.sqlSelection) } }
+    public func annotatedWhenConnected(with selection: @escaping (Database) throws -> [any SQLSelectable]) -> Self {
+        withDestinationRelation { relation in
+            relation = relation.annotatedWhenConnected { db in
+                try selection(db).map(\.sqlSelection)
+            }
+        }
     }
 }
 
-extension Association where Self: FilteredRequest {
+// FilteredRequest conformance
+extension Association {
     /// Creates an association with the provided *predicate promise* added to
     /// the eventual set of already applied predicates.
     ///
@@ -221,12 +252,17 @@ extension Association where Self: FilteredRequest {
     ///     // JOIN team ON team.id = player.teamId AND 1
     ///     let association = Player.team.filter { db in true }
     ///     var request = Player.including(required: association)
-    public func filter(_ predicate: @escaping (Database) throws -> SQLExpressible) -> Self {
-        mapDestinationRelation { $0.filter { try predicate($0).sqlExpression } }
+    public func filterWhenConnected(_ predicate: @escaping (Database) throws -> any SQLExpressible) -> Self {
+        withDestinationRelation { relation in
+            relation = relation.filterWhenConnected { db in
+                try predicate(db).sqlExpression
+            }
+        }
     }
 }
 
-extension Association where Self: OrderedRequest {
+// OrderedRequest conformance
+extension Association {
     /// Creates an association with the provided *orderings promise*.
     ///
     ///     struct Player: TableRecord {
@@ -251,8 +287,12 @@ extension Association where Self: OrderedRequest {
     ///         .reversed()
     ///         .order{ _ in [Column("name")] }
     ///     var request = Player.including(required: association)
-    public func order(_ orderings: @escaping (Database) throws -> [SQLOrderingTerm]) -> Self {
-        mapDestinationRelation { $0.order { try orderings($0).map(\.sqlOrdering) } }
+    public func orderWhenConnected(_ orderings: @escaping (Database) throws -> [any SQLOrderingTerm]) -> Self {
+        withDestinationRelation { relation in
+            relation = relation.orderWhenConnected { db in
+                try orderings(db).map(\.sqlOrdering)
+            }
+        }
     }
     
     /// Creates an association that reverses applied orderings.
@@ -276,7 +316,9 @@ extension Association where Self: OrderedRequest {
     ///     let association = Player.team.reversed()
     ///     var request = Player.including(required: association)
     public func reversed() -> Self {
-        mapDestinationRelation { $0.reversed() }
+        withDestinationRelation { relation in
+            relation = relation.reversed()
+        }
     }
     
     /// Creates an association without any ordering.
@@ -291,47 +333,57 @@ extension Association where Self: OrderedRequest {
     ///     let association = Player.team.order(Column("name")).unordered()
     ///     var request = Player.including(required: association)
     public func unordered() -> Self {
-        mapDestinationRelation { $0.unordered() }
+        withDestinationRelation { relation in
+            relation = relation.unordered()
+        }
     }
 }
 
-extension Association where Self: TableRequest {
+// TableRequest conformance
+extension Association {
     public var databaseTableName: String {
         _sqlAssociation.destination.relation.source.tableName
     }
 }
 
-extension Association where Self: AggregatingRequest {
+// AggregatingRequest conformance
+extension Association {
     /// Creates an association grouped according to *expressions promise*.
-    public func group(_ expressions: @escaping (Database) throws -> [SQLExpressible]) -> Self {
-        mapDestinationRelation { $0.group { try expressions($0).map(\.sqlExpression) } }
+    public func groupWhenConnected(_ expressions: @escaping (Database) throws -> [any SQLExpressible]) -> Self {
+        withDestinationRelation { relation in
+            relation = relation.groupWhenConnected { db in
+                try expressions(db).map(\.sqlExpression)
+            }
+        }
     }
     
     /// Creates an association with the provided *predicate promise* added to
     /// the eventual set of already applied predicates.
-    public func having(_ predicate: @escaping (Database) throws -> SQLExpressible) -> Self {
-        mapDestinationRelation { $0.having { try predicate($0).sqlExpression } }
+    public func havingWhenConnected(_ predicate: @escaping (Database) throws -> any SQLExpressible) -> Self {
+        withDestinationRelation { relation in
+            relation = relation.havingWhenConnected { db in
+                try predicate(db).sqlExpression
+            }
+        }
     }
 }
 
-extension Association where Self: DerivableRequest {
+// DerivableRequest conformance
+extension Association {
     /// Creates an association for returns distinct rows.
     public func distinct() -> Self {
-        mapDestinationRelation { $0.with(\.isDistinct, true) }
-    }
-    
-    /// Creates an association that fetches *limit* rows, starting at *offset*.
-    ///
-    /// Any previous limit is replaced.
-    public func limit(_ limit: Int, offset: Int? = nil) -> Self {
-        mapDestinationRelation { $0.with(\.limit, SQLLimit(limit: limit, offset: offset)) }
+        withDestinationRelation { relation in
+            relation.isDistinct = true
+        }
     }
     
     /// Returns an association that embeds the common table expression.
     ///
     /// See `QueryInterfaceRequest.with(_:)` for more information.
     public func with<RowDecoder>(_ cte: CommonTableExpression<RowDecoder>) -> Self {
-        mapDestinationRelation { $0.with(\.ctes[cte.tableName], cte.cte) }
+        withDestinationRelation { relation in
+            relation.ctes[cte.tableName] = cte.cte
+        }
     }
 }
 
@@ -343,7 +395,9 @@ public protocol AssociationToOne: Association { }
 extension AssociationToOne {
     public func forKey(_ key: String) -> Self {
         let associationKey = SQLAssociationKey.fixedSingular(key)
-        return .init(sqlAssociation: _sqlAssociation.forDestinationKey(associationKey))
+        return with {
+            $0._sqlAssociation = $0._sqlAssociation.forDestinationKey(associationKey)
+        }
     }
 }
 
@@ -355,6 +409,8 @@ public protocol AssociationToMany: Association { }
 extension AssociationToMany {
     public func forKey(_ key: String) -> Self {
         let associationKey = SQLAssociationKey.fixedPlural(key)
-        return .init(sqlAssociation: _sqlAssociation.forDestinationKey(associationKey))
+        return with {
+            $0._sqlAssociation = $0._sqlAssociation.forDestinationKey(associationKey)
+        }
     }
 }

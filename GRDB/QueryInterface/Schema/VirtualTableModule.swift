@@ -25,9 +25,9 @@ public protocol VirtualTableModule {
     /// `Database.create(virtualTable:using:)` method:
     ///
     ///     try db.create(virtualTable: "item", using: module) { t in
-    ///         // t is the result of makeTableDefinition()
+    ///         // t is the result of makeTableDefinition(configuration:)
     ///     }
-    func makeTableDefinition() -> TableDefinition
+    func makeTableDefinition(configuration: VirtualTableConfiguration) -> TableDefinition
     
     /// Returns the module arguments for the `CREATE VIRTUAL TABLE` query.
     func moduleArguments(for definition: TableDefinition, in db: Database) throws -> [String]
@@ -35,6 +35,12 @@ public protocol VirtualTableModule {
     /// Execute any relevant database statement after the virtual table has
     /// been created.
     func database(_ db: Database, didCreate tableName: String, using definition: TableDefinition) throws
+}
+
+public struct VirtualTableConfiguration {
+    /// If true, existing objects must not be replaced, or generate any error
+    /// (even if they do not match the objects that would be created otherwise.)
+    var ifNotExists: Bool
 }
 
 extension Database {
@@ -45,7 +51,7 @@ extension Database {
     ///
     ///     try db.create(virtualTable: "vocabulary", using: "spellfix1")
     ///
-    /// See https://www.sqlite.org/lang_createtable.html
+    /// See <https://www.sqlite.org/lang_createtable.html>
     ///
     /// - parameters:
     ///     - name: The table name.
@@ -86,7 +92,7 @@ extension Database {
     ///         t.column("body")
     ///     }
     ///
-    /// See https://www.sqlite.org/lang_createtable.html
+    /// See <https://www.sqlite.org/lang_createtable.html>
     ///
     /// - parameters:
     ///     - name: The table name.
@@ -100,13 +106,14 @@ extension Database {
         virtualTable tableName: String,
         ifNotExists: Bool = false,
         using module: Module,
-        _ body: ((Module.TableDefinition) -> Void)? = nil)
+        _ body: ((Module.TableDefinition) throws -> Void)? = nil)
     throws
     {
         // Define virtual table
-        let definition = module.makeTableDefinition()
+        let configuration = VirtualTableConfiguration(ifNotExists: ifNotExists)
+        let definition = module.makeTableDefinition(configuration: configuration)
         if let body = body {
-            body(definition)
+            try body(definition)
         }
         
         // Create virtual table

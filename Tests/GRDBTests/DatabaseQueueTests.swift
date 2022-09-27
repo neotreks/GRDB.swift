@@ -4,11 +4,8 @@ import GRDB
 
 class DatabaseQueueTests: GRDBTestCase {
     
-    // Until SPM tests can load resources, disable this test for SPM.
-    #if !SWIFT_PACKAGE
     func testInvalidFileFormat() throws {
         do {
-            let testBundle = Bundle(for: type(of: self))
             let url = testBundle.url(forResource: "Betty", withExtension: "jpeg")!
             guard (try? Data(contentsOf: url)) != nil else {
                 XCTFail("Missing file")
@@ -23,7 +20,6 @@ class DatabaseQueueTests: GRDBTestCase {
                 "file is not a database"].contains(error.message!))
         }
     }
-    #endif
     
     func testAddRemoveFunction() throws {
         // Adding a function and then removing it should succeed
@@ -125,10 +121,6 @@ class DatabaseQueueTests: GRDBTestCase {
     }
     
     func testTargetQueue() throws {
-        guard #available(OSX 10.12, tvOS 10.0, *) else {
-            throw XCTSkip("dispatchPrecondition(condition:) is not available")
-        }
-        
         func test(targetQueue: DispatchQueue) throws {
             dbConfiguration.targetQueue = targetQueue
             let dbQueue = try makeDatabaseQueue()
@@ -152,11 +144,52 @@ class DatabaseQueueTests: GRDBTestCase {
         waitForExpectations(timeout: 1, handler: nil)
     }
     
-    func testQoS() throws {
-        guard #available(OSX 10.12, tvOS 10.0, *) else {
-            throw XCTSkip("dispatchPrecondition(condition:) is not available")
+    func testWriteTargetQueue() throws {
+        func test(targetQueue: DispatchQueue, writeTargetQueue: DispatchQueue) throws {
+            dbConfiguration.targetQueue = targetQueue // unused
+            dbConfiguration.writeTargetQueue = writeTargetQueue
+            let dbQueue = try makeDatabaseQueue()
+            try dbQueue.write { _ in
+                dispatchPrecondition(condition: .onQueue(writeTargetQueue))
+            }
+            try dbQueue.read { _ in
+                dispatchPrecondition(condition: .onQueue(writeTargetQueue))
+            }
         }
         
+        // background queue
+        try test(targetQueue: .global(qos: .background), writeTargetQueue: DispatchQueue(label: "writer"))
+        
+        // main queue
+        let expectation = self.expectation(description: "main")
+        DispatchQueue.global(qos: .default).async {
+            try! test(targetQueue: .main, writeTargetQueue: .main)
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 1, handler: nil)
+    }
+    
+    func testWriteTargetQueueReadOnly() throws {
+        // Create a database before we perform read-only accesses
+        _ = try makeDatabaseQueue(filename: "test")
+        
+        func test(targetQueue: DispatchQueue, writeTargetQueue: DispatchQueue) throws {
+            dbConfiguration.readonly = true
+            dbConfiguration.targetQueue = targetQueue
+            dbConfiguration.writeTargetQueue = writeTargetQueue // unused
+            let dbQueue = try makeDatabaseQueue(filename: "test")
+            try dbQueue.write { _ in
+                dispatchPrecondition(condition: .onQueue(targetQueue))
+            }
+            try dbQueue.read { _ in
+                dispatchPrecondition(condition: .onQueue(targetQueue))
+            }
+        }
+        
+        try test(targetQueue: .global(qos: .background), writeTargetQueue: DispatchQueue(label: "writer"))
+    }
+
+    func testQoS() throws {
         func test(qos: DispatchQoS) throws {
             // https://forums.swift.org/t/what-is-the-default-target-queue-for-a-serial-queue/18094/5
             //
@@ -192,5 +225,81 @@ class DatabaseQueueTests: GRDBTestCase {
         
         try test(qos: .background)
         try test(qos: .userInitiated)
+    }
+    
+    // MARK: - Closing
+    
+    func testClose() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.close()
+        
+        // After close, access throws SQLITE_MISUSE
+        do {
+            try dbQueue.inDatabase { db in
+                try db.execute(sql: "SELECT * FROM sqlite_master")
+            }
+            XCTFail("Expected Error")
+        } catch DatabaseError.SQLITE_MISUSE { }
+        
+        // After close, closing is a noop
+        try dbQueue.close()
+    }
+    
+    func testCloseAfterUse() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.inDatabase { db in
+            try db.execute(sql: "SELECT * FROM sqlite_master")
+        }
+        try dbQueue.close()
+        
+        // After close, access throws SQLITE_MISUSE
+        do {
+            try dbQueue.inDatabase { db in
+                try db.execute(sql: "SELECT * FROM sqlite_master")
+            }
+            XCTFail("Expected Error")
+        } catch DatabaseError.SQLITE_MISUSE { }
+        
+        // After close, closing is a noop
+        try dbQueue.close()
+    }
+    
+    func testCloseWithCachedStatement() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.inDatabase { db in
+            _ = try db.cachedStatement(sql: "SELECT * FROM sqlite_master")
+        }
+        try dbQueue.close()
+        
+        // After close, access throws SQLITE_MISUSE
+        do {
+            try dbQueue.inDatabase { db in
+                try db.execute(sql: "SELECT * FROM sqlite_master")
+            }
+            XCTFail("Expected Error")
+        } catch DatabaseError.SQLITE_MISUSE { }
+        
+        // After close, closing is a noop
+        try dbQueue.close()
+    }
+    
+    func testFailedClose() throws {
+        let dbQueue = try makeDatabaseQueue()
+        let statement = try dbQueue.inDatabase { db in
+            try db.makeStatement(sql: "SELECT * FROM sqlite_master")
+        }
+        
+        try withExtendedLifetime(statement) {
+            do {
+                try dbQueue.close()
+                XCTFail("Expected Error")
+            } catch DatabaseError.SQLITE_BUSY { }
+        }
+        XCTAssert(lastMessage!.contains("unfinalized statement: SELECT * FROM sqlite_master"))
+        
+        // Database is not closed: no error
+        try dbQueue.inDatabase { db in
+            try db.execute(sql: "SELECT * FROM sqlite_master")
+        }
     }
 }

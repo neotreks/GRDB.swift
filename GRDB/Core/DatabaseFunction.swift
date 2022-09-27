@@ -3,7 +3,7 @@ public final class DatabaseFunction: Hashable {
     // SQLite identifies functions by (name + argument count)
     private struct Identity: Hashable {
         let name: String
-        let nArg: Int32 // -1 for variadic functions
+        let nArg: CInt // -1 for variadic functions
     }
     
     /// The name of the SQL function
@@ -11,7 +11,7 @@ public final class DatabaseFunction: Hashable {
     private let identity: Identity
     let pure: Bool
     private let kind: Kind
-    private var eTextRep: Int32 { (SQLITE_UTF8 | (pure ? SQLITE_DETERMINISTIC : 0)) }
+    private var eTextRep: CInt { (SQLITE_UTF8 | (pure ? SQLITE_DETERMINISTIC : 0)) }
     
     /// Creates an SQL function.
     ///
@@ -41,11 +41,11 @@ public final class DatabaseFunction: Hashable {
     ///       not nil.
     public init(
         _ name: String,
-        argumentCount: Int32? = nil,
+        argumentCount: Int? = nil,
         pure: Bool = false,
-        function: @escaping ([DatabaseValue]) throws -> DatabaseValueConvertible?)
+        function: @escaping ([DatabaseValue]) throws -> (any DatabaseValueConvertible)?)
     {
-        self.identity = Identity(name: name, nArg: argumentCount ?? -1)
+        self.identity = Identity(name: name, nArg: argumentCount.map(CInt.init) ?? -1)
         self.pure = pure
         self.kind = .function{ (argc, argv) in
             let arguments = (0..<Int(argc)).map { index in
@@ -68,12 +68,12 @@ public final class DatabaseFunction: Hashable {
     ///             }
     ///         }
     ///
-    ///         func finalize() -> DatabaseValueConvertible? {
+    ///         func finalize() -> (any DatabaseValueConvertible)? {
     ///             return sum
     ///         }
     ///     }
     ///
-    ///     let dbQueue = DatabaseQueue()
+    ///     let dbQueue = try DatabaseQueue()
     ///     let fn = DatabaseFunction("mysum", argumentCount: 1, aggregate: MySum.self)
     ///     try dbQueue.write { db in
     ///         db.add(function: fn)
@@ -98,19 +98,19 @@ public final class DatabaseFunction: Hashable {
     ///       not nil.
     public init<Aggregate: DatabaseAggregate>(
         _ name: String,
-        argumentCount: Int32? = nil,
+        argumentCount: Int? = nil,
         pure: Bool = false,
         aggregate: Aggregate.Type)
     {
-        self.identity = Identity(name: name, nArg: argumentCount ?? -1)
+        self.identity = Identity(name: name, nArg: argumentCount.map(CInt.init) ?? -1)
         self.pure = pure
         self.kind = .aggregate { Aggregate() }
     }
     
     /// Returns an SQL expression that applies the function.
     ///
-    /// See https://github.com/groue/GRDB.swift/#sql-functions
-    public func callAsFunction(_ arguments: SQLExpressible...) -> SQLExpression {
+    /// See <https://github.com/groue/GRDB.swift/#sql-functions>
+    public func callAsFunction(_ arguments: any SQLExpressible...) -> SQLExpression {
         switch kind {
         case .aggregate:
             return .function(name, arguments.map(\.sqlExpression))
@@ -120,7 +120,7 @@ public final class DatabaseFunction: Hashable {
     }
 
     /// Calls sqlite3_create_function_v2
-    /// See https://sqlite.org/c3ref/create_function.html
+    /// See <https://sqlite.org/c3ref/create_function.html>
     func install(in db: Database) {
         // Retain the function definition
         let definition = kind.definition
@@ -147,7 +147,7 @@ public final class DatabaseFunction: Hashable {
     }
     
     /// Calls sqlite3_create_function_v2
-    /// See https://sqlite.org/c3ref/create_function.html
+    /// See <https://sqlite.org/c3ref/create_function.html>
     func uninstall(in db: Database) {
         let code = sqlite3_create_function_v2(
             db.sqliteConnection,
@@ -164,44 +164,46 @@ public final class DatabaseFunction: Hashable {
     
     /// The way to compute the result of a function.
     /// Feeds the `pApp` parameter of sqlite3_create_function_v2
-    /// http://sqlite.org/capi3ref.html#sqlite3_create_function
+    /// <http://sqlite.org/capi3ref.html#sqlite3_create_function>
     private class FunctionDefinition {
-        let compute: (Int32, UnsafeMutablePointer<OpaquePointer?>?) throws -> DatabaseValueConvertible?
-        init(compute: @escaping (Int32, UnsafeMutablePointer<OpaquePointer?>?) throws -> DatabaseValueConvertible?) {
+        let compute: (CInt, UnsafeMutablePointer<OpaquePointer?>?) throws -> (any DatabaseValueConvertible)?
+        init(compute: @escaping (CInt, UnsafeMutablePointer<OpaquePointer?>?)
+             throws -> (any DatabaseValueConvertible)?)
+        {
             self.compute = compute
         }
     }
     
     /// The way to start an aggregate.
     /// Feeds the `pApp` parameter of sqlite3_create_function_v2
-    /// http://sqlite.org/capi3ref.html#sqlite3_create_function
+    /// <http://sqlite.org/capi3ref.html#sqlite3_create_function>
     private class AggregateDefinition {
-        let makeAggregate: () -> DatabaseAggregate
-        init(makeAggregate: @escaping () -> DatabaseAggregate) {
+        let makeAggregate: () -> any DatabaseAggregate
+        init(makeAggregate: @escaping () -> any DatabaseAggregate) {
             self.makeAggregate = makeAggregate
         }
     }
     
     /// The current state of an aggregate, storable in SQLite
     private class AggregateContext {
-        var aggregate: DatabaseAggregate
+        var aggregate: any DatabaseAggregate
         var hasErrored = false
-        init(aggregate: DatabaseAggregate) {
+        init(aggregate: some DatabaseAggregate) {
             self.aggregate = aggregate
         }
     }
     
     /// A function kind: an "SQL function" or an "aggregate".
-    /// See http://sqlite.org/capi3ref.html#sqlite3_create_function
+    /// See <http://sqlite.org/capi3ref.html#sqlite3_create_function>
     private enum Kind {
         /// A regular function: SELECT f(1)
-        case function((Int32, UnsafeMutablePointer<OpaquePointer?>?) throws -> DatabaseValueConvertible?)
+        case function((CInt, UnsafeMutablePointer<OpaquePointer?>?) throws -> (any DatabaseValueConvertible)?)
         
         /// An aggregate: SELECT f(foo) FROM bar GROUP BY baz
-        case aggregate(() -> DatabaseAggregate)
+        case aggregate(() -> any DatabaseAggregate)
         
         /// Feeds the `pApp` parameter of sqlite3_create_function_v2
-        /// http://sqlite.org/capi3ref.html#sqlite3_create_function
+        /// <http://sqlite.org/capi3ref.html#sqlite3_create_function>
         var definition: AnyObject {
             switch self {
             case .function(let compute):
@@ -212,8 +214,8 @@ public final class DatabaseFunction: Hashable {
         }
         
         /// Feeds the `xFunc` parameter of sqlite3_create_function_v2
-        /// http://sqlite.org/capi3ref.html#sqlite3_create_function
-        var xFunc: (@convention(c) (OpaquePointer?, Int32, UnsafeMutablePointer<OpaquePointer?>?) -> Void)? {
+        /// <http://sqlite.org/capi3ref.html#sqlite3_create_function>
+        var xFunc: (@convention(c) (OpaquePointer?, CInt, UnsafeMutablePointer<OpaquePointer?>?) -> Void)? {
             guard case .function = self else { return nil }
             return { (sqliteContext, argc, argv) in
                 let definition = Unmanaged<FunctionDefinition>
@@ -230,8 +232,8 @@ public final class DatabaseFunction: Hashable {
         }
         
         /// Feeds the `xStep` parameter of sqlite3_create_function_v2
-        /// http://sqlite.org/capi3ref.html#sqlite3_create_function
-        var xStep: (@convention(c) (OpaquePointer?, Int32, UnsafeMutablePointer<OpaquePointer?>?) -> Void)? {
+        /// <http://sqlite.org/capi3ref.html#sqlite3_create_function>
+        var xStep: (@convention(c) (OpaquePointer?, CInt, UnsafeMutablePointer<OpaquePointer?>?) -> Void)? {
             guard case .aggregate = self else { return nil }
             return { (sqliteContext, argc, argv) in
                 let aggregateContextU = DatabaseFunction.unmanagedAggregateContext(sqliteContext)
@@ -250,7 +252,7 @@ public final class DatabaseFunction: Hashable {
         }
         
         /// Feeds the `xFinal` parameter of sqlite3_create_function_v2
-        /// http://sqlite.org/capi3ref.html#sqlite3_create_function
+        /// <http://sqlite.org/capi3ref.html#sqlite3_create_function>
         var xFinal: (@convention(c) (OpaquePointer?) -> Void)? {
             guard case .aggregate = self else { return nil }
             return { (sqliteContext) in
@@ -278,8 +280,8 @@ public final class DatabaseFunction: Hashable {
     ///
     /// The result must be released when the aggregate concludes.
     ///
-    /// See https://sqlite.org/c3ref/context.html
-    /// See https://sqlite.org/c3ref/aggregate_context.html
+    /// See <https://sqlite.org/c3ref/context.html>
+    /// See <https://sqlite.org/c3ref/aggregate_context.html>
     private static func unmanagedAggregateContext(_ sqliteContext: OpaquePointer?) -> Unmanaged<AggregateContext> {
         // > The first time the sqlite3_aggregate_context(C,N) routine is called
         // > for a particular aggregate function, SQLite allocates N of memory,
@@ -288,7 +290,7 @@ public final class DatabaseFunction: Hashable {
         // > the same aggregate function instance, the same buffer is returned.
         let stride = MemoryLayout<Unmanaged<AggregateContext>>.stride
         let aggregateContextBufferP = UnsafeMutableRawBufferPointer(
-            start: sqlite3_aggregate_context(sqliteContext, Int32(stride))!,
+            start: sqlite3_aggregate_context(sqliteContext, CInt(stride))!,
             count: stride)
         
         if aggregateContextBufferP.contains(where: { $0 != 0 }) {
@@ -314,7 +316,7 @@ public final class DatabaseFunction: Hashable {
         }
     }
     
-    private static func report(result: DatabaseValueConvertible?, in sqliteContext: OpaquePointer?) {
+    private static func report(result: (any DatabaseValueConvertible)?, in sqliteContext: OpaquePointer?) {
         switch result?.databaseValue.storage ?? .null {
         case .null:
             sqlite3_result_null(sqliteContext)
@@ -326,7 +328,7 @@ public final class DatabaseFunction: Hashable {
             sqlite3_result_text(sqliteContext, string, -1, SQLITE_TRANSIENT)
         case .blob(let data):
             data.withUnsafeBytes {
-                sqlite3_result_blob(sqliteContext, $0.baseAddress, Int32($0.count), SQLITE_TRANSIENT)
+                sqlite3_result_blob(sqliteContext, $0.baseAddress, CInt($0.count), SQLITE_TRANSIENT)
             }
         }
     }
@@ -369,12 +371,12 @@ extension DatabaseFunction {
 ///             }
 ///         }
 ///
-///         func finalize() -> DatabaseValueConvertible? {
+///         func finalize() -> (any DatabaseValueConvertible)? {
 ///             return sum
 ///         }
 ///     }
 ///
-///     let dbQueue = DatabaseQueue()
+///     let dbQueue = try DatabaseQueue()
 ///     let fn = DatabaseFunction("mysum", argumentCount: 1, aggregate: MySum.self)
 ///     try dbQueue.write { db in
 ///         db.add(function: fn)
@@ -402,5 +404,5 @@ public protocol DatabaseAggregate {
     mutating func step(_ dbValues: [DatabaseValue]) throws
     
     /// Returns the final result
-    func finalize() throws -> DatabaseValueConvertible?
+    func finalize() throws -> (any DatabaseValueConvertible)?
 }

@@ -5,19 +5,14 @@ import Dispatch
 ///
 /// See DatabasePool.makeSnapshot()
 ///
-/// For more information, read about "snapshot isolation" at https://sqlite.org/isolation.html
-public class DatabaseSnapshot: DatabaseReader {
-    private var serializedDatabase: SerializedDatabase
+/// For more information, read about "snapshot isolation" at <https://sqlite.org/isolation.html>
+public final class DatabaseSnapshot: DatabaseReader {
+    private let serializedDatabase: SerializedDatabase
     
     /// The database configuration
     public var configuration: Configuration {
         serializedDatabase.configuration
     }
-    
-    #if SQLITE_ENABLE_SNAPSHOT
-    // Support for ValueObservation in DatabasePool
-    private(set) var version: UnsafeMutablePointer<sqlite3_snapshot>?
-    #endif
     
     init(path: String, configuration: Configuration = Configuration(), defaultLabel: String, purpose: String) throws {
         var configuration = DatabasePool.readerConfiguration(configuration)
@@ -26,7 +21,6 @@ public class DatabaseSnapshot: DatabaseReader {
         serializedDatabase = try SerializedDatabase(
             path: path,
             configuration: configuration,
-            schemaCache: DatabaseSchemaCache(),
             defaultLabel: defaultLabel,
             purpose: purpose)
         
@@ -41,26 +35,19 @@ public class DatabaseSnapshot: DatabaseReader {
             try db.beginTransaction(.deferred)
             
             // Acquire snapshot isolation
-            try db.internalCachedSelectStatement(sql: "SELECT rootpage FROM sqlite_master LIMIT 1").makeCursor().next()
-            
-            #if SQLITE_ENABLE_SNAPSHOT
-            // We must expect an error: https://www.sqlite.org/c3ref/snapshot_get.html
-            // > At least one transaction must be written to it first.
-            version = try? db.takeVersionSnapshot()
-            #endif
+            try db.internalCachedStatement(sql: "SELECT rootpage FROM sqlite_master LIMIT 1").makeCursor().next()
         }
     }
     
     deinit {
         // Leave snapshot isolation
         serializedDatabase.reentrantSync { db in
-            #if SQLITE_ENABLE_SNAPSHOT
-            if let version = version {
-                sqlite3_snapshot_free(version)
-            }
-            #endif
             try? db.commit()
         }
+    }
+    
+    public func close() throws {
+        try serializedDatabase.sync { try $0.close() }
     }
 }
 
@@ -75,48 +62,24 @@ extension DatabaseSnapshot {
     
     // MARK: - Reading from Database
     
-    /// Synchronously executes a read-only block that takes a database
-    /// connection, and returns its result.
-    ///
-    ///     let players = try snapshot.read { db in
-    ///         try Player.fetchAll(...)
-    ///     }
-    ///
-    /// - parameter block: A block that accesses the database.
-    /// - throws: The error thrown by the block.
     public func read<T>(_ block: (Database) throws -> T) rethrows -> T {
         try serializedDatabase.sync(block)
     }
     
-    /// Asynchronously executes a read-only block in a protected dispatch queue.
-    ///
-    ///     let players = try snapshot.asyncRead { dbResult in
-    ///         do {
-    ///             let db = try dbResult.get()
-    ///             let count = try Player.fetchCount(db)
-    ///         } catch {
-    ///             // Handle error
-    ///         }
-    ///     }
-    ///
-    /// - parameter block: A block that accesses the database.
-    public func asyncRead(_ block: @escaping (Result<Database, Error>) -> Void) {
-        serializedDatabase.async { block(.success($0)) }
+    public func asyncRead(_ value: @escaping (Result<Database, Error>) -> Void) {
+        serializedDatabase.async { value(.success($0)) }
     }
     
-    /// :nodoc:
-    public func _weakAsyncRead(_ block: @escaping (Result<Database, Error>?) -> Void) {
-        serializedDatabase.weakAsync { block($0.map { .success($0) }) }
+    public func unsafeRead<T>(_ value: (Database) throws -> T) rethrows -> T {
+        try serializedDatabase.sync(value)
     }
     
-    /// :nodoc:
-    public func unsafeRead<T>(_ block: (Database) throws -> T) rethrows -> T {
-        try serializedDatabase.sync(block)
+    public func asyncUnsafeRead(_ value: @escaping (Result<Database, Error>) -> Void) {
+        serializedDatabase.async { value(.success($0)) }
     }
     
-    /// :nodoc:
-    public func unsafeReentrantRead<T>(_ block: (Database) throws -> T) throws -> T {
-        try serializedDatabase.reentrantSync(block)
+    public func unsafeReentrantRead<T>(_ value: (Database) throws -> T) throws -> T {
+        try serializedDatabase.reentrantSync(value)
     }
     
     // MARK: - Database Observation
@@ -126,7 +89,7 @@ extension DatabaseSnapshot {
         observation: ValueObservation<Reducer>,
         scheduling scheduler: ValueObservationScheduler,
         onChange: @escaping (Reducer.Value) -> Void)
-    -> DatabaseCancellable
+    -> AnyDatabaseCancellable
     {
         _addReadOnly(
             observation: observation,

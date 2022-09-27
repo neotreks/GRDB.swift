@@ -1,7 +1,7 @@
 /// The right-hand side of the `IN` or `NOT IN` SQL operators
 ///
-/// See https://sqlite.org/lang_expr.html#the_in_and_not_in_operators
-public struct SQLCollection {
+/// See <https://sqlite.org/lang_expr.html#the_in_and_not_in_operators>
+struct SQLCollection {
     private var impl: Impl
     
     private enum Impl {
@@ -101,17 +101,15 @@ extension SQLCollection {
             
         case let .array(expressions):
             guard let expression = expressions.first else {
+                // [].contains(...) -> false
                 return false.sqlExpression
             }
-            
-            // With SQLite, `expr IN (NULL)` never succeeds.
-            //
-            // We must not provide special handling of NULL, because we can not
-            // guess if our `expressions` array contains a value evaluates to NULL.
-            
+                        
             if expressions.count == 1 {
-                // Output `expr = value` instead of `expr IN (value)`, because it
-                // looks nicer. And make sure we do not produce 'expr IS NULL'.
+                // Output `value = expression` instead of `value IN (expression)`,
+                // because it looks nicer. Force the equal `=` operator, so that
+                // the result evaluates just as `value IN (expression)`, even
+                // if expression is NULL.
                 return .compare(.equal, value, expression)
             }
             

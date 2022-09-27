@@ -172,7 +172,7 @@ class ColumnExpressionTests: GRDBTestCase {
             try XCTAssertEqual(Player.filter([1, 2, 3].contains(Player.Columns.id)).databaseRegion(db).description, "player(full_name,id,score)[1,2,3]")
             
             // Test specific column updates
-            let player = Player(row: ["id": 1, "full_name": "Arthur", "score": 1000])
+            let player = try Player(row: ["id": 1, "full_name": "Arthur", "score": 1000])
             try? player.update(db, columns: [Player.Columns.name, Player.Columns.score])
             XCTAssertEqual(lastSQLQuery, "UPDATE \"player\" SET \"full_name\"=\'Arthur\', \"score\"=1000 WHERE \"id\"=1")
             
@@ -220,7 +220,7 @@ class ColumnExpressionTests: GRDBTestCase {
             try XCTAssertEqual(Player.filter([1, 2, 3].contains(Player.CodingKeys.id)).databaseRegion(db).description, "player(full_name,id,score)[1,2,3]")
             
             // Test specific column updates
-            let player = Player(row: ["id": 1, "full_name": "Arthur", "score": 1000])
+            let player = try Player(row: ["id": 1, "full_name": "Arthur", "score": 1000])
             try? player.update(db, columns: [Player.CodingKeys.name, Player.CodingKeys.score])
             XCTAssertEqual(lastSQLQuery, "UPDATE \"player\" SET \"full_name\"=\'Arthur\', \"score\"=1000 WHERE \"id\"=1")
             
@@ -228,6 +228,50 @@ class ColumnExpressionTests: GRDBTestCase {
             let expression = Player.CodingKeys.name == "foo"
             let request = Player.select(expression)
             try assertEqualSQL(db, request, "SELECT \"full_name\" = 'foo' FROM \"player\"")
+        }
+    }
+    
+    func testDetachedColumn() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.write { db in
+            try db.create(table: "t") { t in t.column("a") }
+            
+            // Regular columns are qualified
+            do {
+                let alias = TableAlias(name: "custom")
+                let request = Table("t")
+                    .aliased(alias)
+                    .order(Column("a"))
+                let sql = try request.makePreparedRequest(db).statement.sql
+                XCTAssertEqual(sql, """
+                    SELECT "custom".* FROM "t" "custom" ORDER BY "custom"."a"
+                    """)
+            }
+            
+            // Detached columns are NOT qualified
+            do {
+                let alias = TableAlias(name: "custom")
+                let request = Table("t")
+                    .aliased(alias)
+                    .order(Column("a").detached)
+                let sql = try request.makePreparedRequest(db).statement.sql
+                XCTAssertEqual(sql, """
+                    SELECT "custom".* FROM "t" "custom" ORDER BY "a"
+                    """)
+            }
+            
+            // Detached columns are quoted
+            do {
+                let alias = TableAlias(name: "custom")
+                let request = Table("t")
+                    .aliased(alias)
+                    .select(Column("a").forKey("order"))
+                    .order(Column("order").detached)
+                let sql = try request.makePreparedRequest(db).statement.sql
+                XCTAssertEqual(sql, """
+                    SELECT "custom"."a" AS "order" FROM "t" "custom" ORDER BY "order"
+                    """)
+            }
         }
     }
 }

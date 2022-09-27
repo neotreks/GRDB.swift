@@ -98,46 +98,59 @@ Define one record type per database table, and make it adopt a [PersistableRecor
 In this sample code, we'll use Codable structs, but there are [other ways](../README.md#examples-of-record-definitions) to define records.
 
 ```swift
-struct Author: Codable {
+struct Author: Codable, Identifiable {
     var id: Int64?
     var name: String
     var country: String?
 }
 
-struct Book: Codable {
+struct Book: Codable, Identifiable {
     var id: Int64?
     var authorId: Int64
     var title: String
 }
+```
 
+We add database powers to our types with [record protocols]. Since our records use auto-incremented ids, we provide an implementation of the `didInsert` method:
+
+```swift
 // Add Database access
 
 extension Author: FetchableRecord, MutablePersistableRecord {
     // Update auto-incremented id upon successful insertion
-    mutating func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
 extension Book: FetchableRecord, MutablePersistableRecord {
     // Update auto-incremented id upon successful insertion
-    mutating func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 ```
 
-That's it. The `Author` type can read and write in the `author` database table. `Book` as well, in `book`. See [record protocols] for more information.
+That's it. The `Author` type can read and write in the `author` database table. `Book` as well, in `book`.
 
 > :bulb: **Tip**: When a column of a database table can't be NULL, store it in a non-optional property of your record type. On the other side, when the database may contain NULL, define an optional property.
 > 
-> :bulb: **Tip**: When a database table uses an auto-incremented identifier, make the `id` property optional (so that you can instantiate a record before it gets inserted and gains an id), and implement the `didInsert(with:for:)` method:
+> :bulb: **Tip**: When a database table uses an auto-incremented identifier, make the `id` property optional (so that you can instantiate a record before it gets inserted and gains an id), and implement the `didInsert(_:)` method:
 >
 > ```swift
 > try dbQueue.write { db in
 >     var author = Author(id: nil, name: "Hermann Melville", country: "United States")
 >     try author.insert(db)
 >     print(author.id!) // Guaranteed non-nil id
+> }
+> ```
+>
+> :bulb: **Tip**: When the database table has a single-column primary key, have your record type adopt the standard [Identifiable] protocol. This allows GRDB to define type-safe id-related methods:
+>
+> ```swift
+> let authorID: Int64 = ...
+> let author: Author? = try dbQueue.read { db in
+>     try Author.fetchOne(db, id: authorID)
 > }
 > ```
 
@@ -225,7 +238,7 @@ Let's look at three examples:
     
     > :bulb: Private properties allow records to choose both their best database representation, and at the same time, their best Swift interface.
 
-**Generally speaking**, record types are the dedicated place, in your code, where you can transform raw database values into well-suited types that the rest of the application will enjoy. When needed, you can even [validate values](../README.md#customizing-the-persistence-methods) before they enter the database.
+**Generally speaking**, record types are the dedicated place, in your code, where you can transform raw database values into well-suited types that the rest of the application will enjoy. When needed, you can even [validate values](../README.md#persistence-callbacks) before they enter the database.
 
 
 ## Singleton Records
@@ -290,8 +303,8 @@ When you find yourself build similar requests over and over in your application,
 To do so, extend the `DerivableRequest` protocol. It generally lets you filter, sort, leverage associations (we'll talk about associations in the [Compose Records] chapter below), etc:
 
 ```swift
-// Author requests         ~~~~~~~~~~~~~~~~~~~~~~~~~~
-extension DerivableRequest where RowDecoder == Author {
+// Author requests
+extension DerivableRequest<Author> {
     /// Order authors by name, in a localized case-insensitive fashion
     func orderByName() -> Self {
         let name = Author.Columns.name
@@ -333,8 +346,8 @@ try dbQueue.read { db in
 Because they are defined in an extension of the `DerivableRequest` protocol, our customized methods can decorate both requests and associations. See how the implementation of `filter(authorCountry:)` for books, below, uses the `filter(country:)` for authors:
 
 ```swift
-// Book requests           ~~~~~~~~~~~~~~~~~~~~~~~~
-extension DerivableRequest where RowDecoder == Book {
+// Book requests
+extension DerivableRequest<Book> {
     /// Filters books by kind
     func filter(kind: Book.Kind) -> Self {
         filter(Book.Columns.kind == kind)
@@ -359,16 +372,16 @@ try dbQueue.read { db in
 Extensions to the `DerivableRequest` protocol can not change the type of requests. This has to be expressed in an extension to `QueryInterfaceRequest`. For example:
 
 ```swift
-// Author requests              ~~~~~~~~~~~~~~~~~~~~~~~~~~
-extension QueryInterfaceRequest where RowDecoder == Author {
+// Author requests
+extension QueryInterfaceRequest<Author> {
     // Selects author ids
-    func id() -> QueryInterfaceRequest<Int64> {
-        select(Author.Columns.id)
+    func selectId() -> QueryInterfaceRequest<Int64> {
+        selectPrimaryKey(as: Int64.self)
     }
 }
 
 // IDs of French authors
-let ids: [Int64] = try Author.all().filter(country: "France").id().fetchAll(db)
+let ids: [Int64] = try Author.all().filter(country: "France").selectId().fetchAll(db)
 ```
 
 ## Compose Records
@@ -415,7 +428,7 @@ As in the sample code above, requests which feed from several associated records
 
 Unlike the primitive persistable record types `Author` and `Book`, those records can not write in the database. They are simple data types, passive views on the database content. Remember, only [Persistable Record Types are Responsible for Their Tables].
 
-> :question: **Note**: The example `AuthorInfo` and `Authorship` types above may look superfluous to you. After all, other ORMs out there are able to navigate in complex graphs of records without much fuss, aren't they?
+> **Note**: The example `AuthorInfo` and `Authorship` types above may look superfluous to you. After all, other ORMs out there are able to navigate in complex graphs of records without much fuss, aren't they?
 >
 > That is because other ORMs perform lazy loading:
 >
@@ -449,7 +462,7 @@ Granted with primitive and derived record types, your application will load the 
     let authorId = 123
     let authorInfo: AuthorInfo? = try dbQueue.read { db in
         let request = Author
-            .filter(key: authorId)
+            .filter(id: authorId)
             .including(all: Author.books)
         return try AuthorInfo.fetchOne(db, request)
     }
@@ -465,7 +478,7 @@ Granted with primitive and derived record types, your application will load the 
     let bookId = 123
     let bookInfo: BookInfo? = try dbQueue.read { db in
         let request = Book
-            .filter(key: bookId)
+            .filter(id: bookId)
             .including(required: Book.author)
         return try BookInfo.fetchOne(db, request)
     }
@@ -502,7 +515,7 @@ Those properties provide an alternative way to feed our application:
     }
     let authorId = 123
     let authorInfo: AuthorInfo? = try dbQueue.read { db in
-        guard let author = try Author.fetchOne(db, key: authorId) else {
+        guard let author = try Author.fetchOne(db, id: authorId) else {
             return nil
         }
         let books = try author.books.fetchAll(db)
@@ -521,7 +534,7 @@ Those properties provide an alternative way to feed our application:
     }
     let bookId = 123
     let bookInfo: BookInfo? = try dbQueue.read { db in
-        guard let book = try Book.fetchOne(db, key: bookId) else {
+        guard let book = try Book.fetchOne(db, id: bookId) else {
             return nil
         }
         guard let author = try book.author.fetchOne(db) else {
@@ -534,7 +547,7 @@ Those properties provide an alternative way to feed our application:
 
 ## How to Design Database Managers
 
-Many developpers want to hide GRDB database queues and pools inside "database managers":
+Many developers want to hide GRDB database queues and pools inside "database managers":
 
 ```swift
 // LibraryManager grants access to the library database.
@@ -563,7 +576,7 @@ class NaiveLibraryManager {
     func author(id: Int64) -> Author? {
         do {
             return try dbQueue.read { db in
-                try Author.fetchOne(db, key: id)
+                try Author.fetchOne(db, id: id)
             }
         } catch {
             return nil
@@ -573,7 +586,7 @@ class NaiveLibraryManager {
     func book(id: Int64) -> Book? {
         do {
             return try dbQueue.read { db in
-                try Book.fetchOne(db, key: id)
+                try Book.fetchOne(db, id: id)
             }
         } catch {
             return nil
@@ -622,13 +635,13 @@ class ImprovedLibraryManager {
     
     func author(id: Int64) throws -> Author? {
         try dbQueue.read { db in
-            try Author.fetchOne(db, key: id)
+            try Author.fetchOne(db, id: id)
         }
     }
     
     func book(id: Int64) throws -> Book? {
         try dbQueue.read { db in
-            try Book.fetchOne(db, key: id)
+            try Book.fetchOne(db, id: id)
         }
     }
     
@@ -702,7 +715,7 @@ extension LibraryManager {
     
     func bookInfo(bookId: Int64) throws -> BookInfo? {
         try dbQueue.read { db in
-            guard let book = try Book.fetchOne(db, key: bookId) else {
+            guard let book = try Book.fetchOne(db, id: bookId) else {
                 return nil
             }
             guard let author = try book.author.fetchOne(db) else {
@@ -722,7 +735,7 @@ extension LibraryManager {
     
     func authorInfo(authorId: Int64) throws -> AuthorInfo? {
         try dbQueue.read { db in
-            guard let author = try Author.fetchOne(db, key: authorId) else {
+            guard let author = try Author.fetchOne(db, id: authorId) else {
                 return nil
             }
             let books = try author.books.fetchAll(db)
@@ -738,7 +751,7 @@ When a new screen is added to your application, and you want to make sure it dis
 
 In other words: since GRDB is an unmanaged ORM, some amount of management must be imported into your application in order to make it fully thread-safe.
 
-> :question: **Note**: Wrapping several fetches in a single `read` method may look like an inconvenience to you. After all, other ORMs don't require that much ceremony:
+> **Note**: Wrapping several fetches in a single `read` method may look like an inconvenience to you. After all, other ORMs don't require that much ceremony:
 > 
 > ```ruby
 > # Ruby's Active Record
@@ -794,8 +807,8 @@ Instead, have a look at [Database Observation]:
 [migrations]: Migrations.md
 [migration]: Migrations.md
 [Foreign Key Actions]: https://sqlite.org/foreignkeys.html#fk_actions
-[Concurrency Guide]: ../README.md#concurrency
-[GRDB concurrency rules]: ../README.md#concurrency
+[Concurrency Guide]: Concurrency.md
+[GRDB concurrency rules]: Concurrency.md#concurrency-rules
 [PersistableRecord]: ../README.md#persistablerecord-protocol
 [Database Observation]: ../README.md#database-changes-observation
 [ValueObservation]: ../README.md#valueobservation
@@ -820,3 +833,4 @@ Instead, have a look at [Database Observation]:
 [CodingKeys]: https://developer.apple.com/documentation/foundation/archives_and_serialization/encoding_and_decoding_custom_types
 [Combine Support]: Combine.md
 [Value]: ../README.md#values
+[Identifiable]: https://developer.apple.com/documentation/swift/identifiable

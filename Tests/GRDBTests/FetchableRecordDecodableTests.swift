@@ -8,18 +8,18 @@ class FetchableRecordDecodableTests: GRDBTestCase { }
 
 extension FetchableRecordDecodableTests {
     
-    func testTrivialDecodable() {
+    func testTrivialDecodable() throws {
         struct Struct : FetchableRecord, Decodable {
             let value: String
         }
         
         do {
-            let s = Struct(row: ["value": "foo"])
+            let s = try Struct(row: ["value": "foo"])
             XCTAssertEqual(s.value, "foo")
         }
     }
     
-    func testCustomDecodable() {
+    func testCustomDecodable() throws {
         struct Struct : FetchableRecord, Decodable {
             let value: String
             
@@ -34,7 +34,7 @@ extension FetchableRecordDecodableTests {
         }
         
         do {
-            let s = Struct(row: ["someColumn": "foo"])
+            let s = try Struct(row: ["someColumn": "foo"])
             XCTAssertEqual(s.value, "foo")
         }
     }
@@ -59,7 +59,7 @@ extension FetchableRecordDecodableTests {
 
 extension FetchableRecordDecodableTests {
     
-    func testTrivialProperty() {
+    func testTrivialProperty() throws {
         struct Struct : FetchableRecord, Decodable {
             let int64: Int64
             let optionalInt64: Int64?
@@ -67,25 +67,25 @@ extension FetchableRecordDecodableTests {
         
         do {
             // No null values
-            let s = Struct(row: ["int64": 1, "optionalInt64": 2])
+            let s = try Struct(row: ["int64": 1, "optionalInt64": 2])
             XCTAssertEqual(s.int64, 1)
             XCTAssertEqual(s.optionalInt64, 2)
         }
         do {
             // Null values
-            let s = Struct(row: ["int64": 2, "optionalInt64": nil])
+            let s = try Struct(row: ["int64": 2, "optionalInt64": nil])
             XCTAssertEqual(s.int64, 2)
             XCTAssertNil(s.optionalInt64)
         }
         do {
             // Missing and extra values
-            let s = Struct(row: ["int64": 3, "ignored": "?"])
+            let s = try Struct(row: ["int64": 3, "ignored": "?"])
             XCTAssertEqual(s.int64, 3)
             XCTAssertNil(s.optionalInt64)
         }
     }
     
-    func testTrivialSingleValueDecodableProperty() {
+    func testTrivialSingleValueDecodableProperty() throws {
         struct Value : Decodable {
             let string: String
             
@@ -101,27 +101,27 @@ extension FetchableRecordDecodableTests {
         
         do {
             // No null values
-            let s = Struct(row: ["value": "foo", "optionalValue": "bar"])
+            let s = try Struct(row: ["value": "foo", "optionalValue": "bar"])
             XCTAssertEqual(s.value.string, "foo")
             XCTAssertEqual(s.optionalValue!.string, "bar")
         }
         
         do {
             // Null values
-            let s = Struct(row: ["value": "foo", "optionalValue": nil])
+            let s = try Struct(row: ["value": "foo", "optionalValue": nil])
             XCTAssertEqual(s.value.string, "foo")
             XCTAssertNil(s.optionalValue)
         }
         
         do {
             // Missing and extra values
-            let s = Struct(row: ["value": "foo", "ignored": "?"])
+            let s = try Struct(row: ["value": "foo", "ignored": "?"])
             XCTAssertEqual(s.value.string, "foo")
             XCTAssertNil(s.optionalValue)
         }
     }
     
-    func testNonTrivialSingleValueDecodableProperty() {
+    func testNonTrivialSingleValueDecodableProperty() throws {
         struct NestedValue : Decodable {
             let string: String
             
@@ -145,27 +145,27 @@ extension FetchableRecordDecodableTests {
         
         do {
             // No null values
-            let s = Struct(row: ["value": "foo", "optionalValue": "bar"])
+            let s = try Struct(row: ["value": "foo", "optionalValue": "bar"])
             XCTAssertEqual(s.value.nestedValue.string, "foo")
             XCTAssertEqual(s.optionalValue!.nestedValue.string, "bar")
         }
         
         do {
             // Null values
-            let s = Struct(row: ["value": "foo", "optionalValue": nil])
+            let s = try Struct(row: ["value": "foo", "optionalValue": nil])
             XCTAssertEqual(s.value.nestedValue.string, "foo")
             XCTAssertNil(s.optionalValue)
         }
         
         do {
             // Missing and extra values
-            let s = Struct(row: ["value": "foo", "ignored": "?"])
+            let s = try Struct(row: ["value": "foo", "ignored": "?"])
             XCTAssertEqual(s.value.nestedValue.string, "foo")
             XCTAssertNil(s.optionalValue)
         }
     }
     
-    func testDecodableRawRepresentableProperty() {
+    func testDecodableRawRepresentableProperty() throws {
         // This test is somewhat redundant with testSingleValueDecodableProperty,
         // since a RawRepresentable enum is a "single-value" Decodable.
         //
@@ -182,27 +182,27 @@ extension FetchableRecordDecodableTests {
         
         do {
             // No null values
-            let s = Struct(row: ["value": "foo", "optionalValue": "bar"])
+            let s = try Struct(row: ["value": "foo", "optionalValue": "bar"])
             XCTAssertEqual(s.value, .foo)
             XCTAssertEqual(s.optionalValue!, .bar)
         }
         
         do {
             // Null values
-            let s = Struct(row: ["value": "foo", "optionalValue": nil])
+            let s = try Struct(row: ["value": "foo", "optionalValue": nil])
             XCTAssertEqual(s.value, .foo)
             XCTAssertNil(s.optionalValue)
         }
         
         do {
             // Missing and extra values
-            let s = Struct(row: ["value": "foo", "ignored": "?"])
+            let s = try Struct(row: ["value": "foo", "ignored": "?"])
             XCTAssertEqual(s.value, .foo)
             XCTAssertNil(s.optionalValue)
         }
     }
     
-    func testDatabaseValueConvertibleProperty() {
+    func testDatabaseValueConvertibleProperty() throws {
         // This test makes sure that Date, for example, can be read from a String.
         //
         // Without this preference for fromDatabaseValue(_:) over init(from:Decoder),
@@ -238,21 +238,21 @@ extension FetchableRecordDecodableTests {
         
         do {
             // No null values
-            let s = Struct(row: ["value": "foo", "optionalValue": "bar"])
+            let s = try Struct(row: ["value": "foo", "optionalValue": "bar"])
             XCTAssertEqual(s.value.string, "foo (DatabaseValueConvertible)")
             XCTAssertEqual(s.optionalValue!.string, "bar (DatabaseValueConvertible)")
         }
         
         do {
             // Null values
-            let s = Struct(row: ["value": "foo", "optionalValue": nil])
+            let s = try Struct(row: ["value": "foo", "optionalValue": nil])
             XCTAssertEqual(s.value.string, "foo (DatabaseValueConvertible)")
             XCTAssertNil(s.optionalValue)
         }
         
         do {
             // Missing and extra values
-            let s = Struct(row: ["value": "foo", "ignored": "?"])
+            let s = try Struct(row: ["value": "foo", "ignored": "?"])
             XCTAssertEqual(s.value.string, "foo (DatabaseValueConvertible)")
             XCTAssertNil(s.optionalValue)
         }
@@ -263,33 +263,33 @@ extension FetchableRecordDecodableTests {
 
 extension FetchableRecordDecodableTests {
 
-    func testStructWithDate() {
+    func testStructWithDate() throws {
         struct StructWithDate : FetchableRecord, Decodable {
             let date: Date
         }
         
         let date = Date()
-        let value = StructWithDate(row: ["date": date])
+        let value = try StructWithDate(row: ["date": date])
         XCTAssert(abs(value.date.timeIntervalSince(date)) < 0.001)
     }
     
-    func testStructWithURL() {
+    func testStructWithURL() throws {
         struct StructWithURL : FetchableRecord, Decodable {
             let url: URL
         }
         
         let url = URL(string: "https://github.com")
-        let value = StructWithURL(row: ["url": url])
+        let value = try StructWithURL(row: ["url": url])
         XCTAssertEqual(value.url, url)
     }
     
-    func testStructWithUUID() {
+    func testStructWithUUID() throws {
         struct StructWithUUID : FetchableRecord, Decodable {
             let uuid: UUID
         }
         
         let uuid = UUID()
-        let value = StructWithUUID(row: ["uuid": uuid])
+        let value = try StructWithUUID(row: ["uuid": uuid])
         XCTAssertEqual(value.uuid, uuid)
     }
 }
@@ -585,7 +585,7 @@ extension FetchableRecordDecodableTests {
             {"firstName":"Bob","lastName":"Dylan"}
             """]
         
-        let model = StructWithNestedType(row: row)
+        let model = try StructWithNestedType(row: row)
         XCTAssertEqual(model.nested.firstName, "Bob")
         XCTAssertEqual(model.nested.lastName, "Dylan")
     }
@@ -762,6 +762,311 @@ extension FetchableRecordDecodableTests {
             XCTAssertEqual(record.optionalDates[1]!.timeIntervalSince1970, 128)
         }
     }
+    
+    // MARK: - DatabaseColumnDecodingStrategy
+    
+    func testDatabaseColumnDecodingStrategy_useDefaultKeys() throws {
+        struct Record: FetchableRecord, Decodable, Equatable {
+            static let databaseColumnDecodingStrategy = DatabaseColumnDecodingStrategy.useDefaultKeys
+            let requiredId: Int
+            let optionalName: String?
+            let requiredDates: [Date]
+            let optionalDates: [Date?]
+            let optionalDates2: [Date]?
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "requiredId": 1,
+                "optionalName": "test1",
+                "requiredDates": "[128000]",
+                "optionalDates": "[null, 128000]",
+                "optionalDates2": "[128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: "test1",
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: [Date(timeIntervalSince1970: 128)]))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "REQUIREDID": 1,
+                "OPTIONALNAME": "test1",
+                "REQUIREDDATES": "[128000]",
+                "OPTIONALDATES": "[null, 128000]",
+                "OPTIONALDATES2": "[128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: "test1",
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: [Date(timeIntervalSince1970: 128)]))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "requiredId": 1,
+                "optionalName": nil,
+                "requiredDates": "[128000]",
+                "optionalDates": "[null, 128000]",
+                "optionalDates2": nil,
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: nil,
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: nil))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "requiredId": 1,
+                "requiredDates": "[128000]",
+                "optionalDates": "[null, 128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: nil,
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: nil))
+        }
+        
+        do {
+            _ = try RowDecoder().decode(Record.self, from: [
+                "required_id": 1,
+                "optionalName": "test1",
+                "requiredDates": "[128000]",
+                "optionalDates": "[null, 128000]",
+                "optionalDates2": "[128000]",
+            ])
+            XCTFail("Expected error")
+        } catch let RowDecodingError.keyNotFound(.columnName(column), context) {
+            XCTAssertEqual(column, "requiredId")
+            XCTAssertEqual(context.debugDescription, "column not found: \"requiredId\"")
+        }
+    }
+    
+    func testDatabaseColumnDecodingStrategy_convertFromSnakeCase() throws {
+        struct Record: FetchableRecord, Decodable, Equatable {
+            static let databaseColumnDecodingStrategy = DatabaseColumnDecodingStrategy.convertFromSnakeCase
+            let requiredId: Int
+            let optionalName: String?
+            let requiredDates: [Date]
+            let optionalDates: [Date?]
+            let optionalDates2: [Date]?
+        }
+        
+        struct IncorrectRecord: FetchableRecord, Decodable, Equatable {
+            static let databaseColumnDecodingStrategy = DatabaseColumnDecodingStrategy.convertFromSnakeCase
+            let requiredID: Int // incorrect: should be requiredId
+            let optionalName: String?
+            let requiredDates: [Date]
+            let optionalDates: [Date?]
+            let optionalDates2: [Date]?
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "required_id": 1,
+                "optional_name": "test1",
+                "required_dates": "[128000]",
+                "optional_dates": "[null, 128000]",
+                "optional_dates2": "[128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: "test1",
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: [Date(timeIntervalSince1970: 128)]))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "REQUIRED_ID": 1,
+                "OPTIONAL_NAME": "test1",
+                "REQUIRED_DATES": "[128000]",
+                "OPTIONAL_DATES": "[null, 128000]",
+                "OPTIONAL_DATES2": "[128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: "test1",
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: [Date(timeIntervalSince1970: 128)]))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "required_id": 1,
+                "optional_name": nil,
+                "required_dates": "[128000]",
+                "optional_dates": "[null, 128000]",
+                "optional_dates2": nil,
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: nil,
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: nil))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "required_id": 1,
+                "required_dates": "[128000]",
+                "optional_dates": "[null, 128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: nil,
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: nil))
+        }
+        
+        do {
+            // Matches JSONDecoder.KeyDecodingStrategy.convertFromSnakeCase behavior
+            let record = try RowDecoder().decode(Record.self, from: [
+                "requiredId": 1,
+                "optionalName": "test1",
+                "requiredDates": "[128000]",
+                "optionalDates": "[null, 128000]",
+                "optionalDates2": "[128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: "test1",
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: [Date(timeIntervalSince1970: 128)]))
+        }
+        
+        do {
+            _ = try RowDecoder().decode(Record.self, from: [
+                "required_idx": 1,
+                "optional_name": "test1",
+                "required_dates": "[128000]",
+                "optional_dates": "[null, 128000]",
+                "optional_dates2": "[128000]",
+            ])
+            XCTFail("Expected error")
+        } catch let RowDecodingError.keyNotFound(.columnName(column), context) {
+            XCTAssertEqual(column, "requiredId")
+            XCTAssertEqual(context.debugDescription, """
+                key not found: CodingKeys(stringValue: "requiredId", intValue: nil) ("requiredId"), \
+                converted to required_id
+                """)
+        }
+        
+        do {
+            _ = try RowDecoder().decode(IncorrectRecord.self, from: [
+                "required_id": 1,
+                "optional_name": "test1",
+                "required_dates": "[128000]",
+                "optional_dates": "[null, 128000]",
+                "optional_dates2": "[128000]",
+            ])
+            XCTFail("Expected error")
+        } catch let RowDecodingError.keyNotFound(.columnName(column), context) {
+            XCTAssertEqual(column, "requiredID")
+            XCTAssertEqual(context.debugDescription, """
+                key not found: CodingKeys(stringValue: "requiredID", intValue: nil) ("requiredID"), \
+                with divergent representation requiredId, \
+                converted to required_id
+                """)
+        }
+    }
+    
+    func testDatabaseColumnDecodingStrategy_custom() throws {
+        struct AnyKey: CodingKey {
+            var stringValue: String
+            var intValue: Int? { nil }
+            init(stringValue: String) { self.stringValue = stringValue }
+            init?(intValue: Int) { nil }
+        }
+        
+        struct Record: FetchableRecord, Decodable, Equatable {
+            static let databaseColumnDecodingStrategy = DatabaseColumnDecodingStrategy.custom { column in
+                AnyKey(stringValue: String(column.dropFirst()))
+            }
+            let requiredId: Int
+            let optionalName: String?
+            let requiredDates: [Date]
+            let optionalDates: [Date?]
+            let optionalDates2: [Date]?
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "_requiredId": 1,
+                "_optionalName": "test1",
+                "_requiredDates": "[128000]",
+                "_optionalDates": "[null, 128000]",
+                "_optionalDates2": "[128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: "test1",
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: [Date(timeIntervalSince1970: 128)]))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "_requiredId": 1,
+                "_optionalName": nil,
+                "_requiredDates": "[128000]",
+                "_optionalDates": "[null, 128000]",
+                "_optionalDates2": nil,
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: nil,
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: nil))
+        }
+        
+        do {
+            let record = try RowDecoder().decode(Record.self, from: [
+                "_requiredId": 1,
+                "_requiredDates": "[128000]",
+                "_optionalDates": "[null, 128000]",
+            ])
+            XCTAssertEqual(record, Record(
+                            requiredId: 1,
+                            optionalName: nil,
+                            requiredDates: [Date(timeIntervalSince1970: 128)],
+                            optionalDates: [nil, Date(timeIntervalSince1970: 128)],
+                            optionalDates2: nil))
+        }
+        
+        do {
+            _ = try RowDecoder().decode(Record.self, from: [
+                "requiredId": 1,
+                "_optionalName": "test1",
+                "_requiredDates": "[128000]",
+                "_optionalDates": "[null, 128000]",
+                "_optionalDates2": "[128000]",
+            ])
+            XCTFail("Expected error")
+        } catch let RowDecodingError.keyNotFound(.columnName(column), context) {
+            XCTAssertEqual(column, "requiredId")
+            XCTAssertEqual(context.debugDescription, """
+                key not found: CodingKeys(stringValue: "requiredId", intValue: nil) ("requiredId")
+                """)
+        }
+    }
 }
 
 // MARK: - User Infos & Coding Keys
@@ -933,7 +1238,7 @@ extension FetchableRecordDecodableTests {
             }
             
             let adapter = SuffixRowAdapter(fromIndex: 1).addingScopes(["nestedKeyed": RangeRowAdapter(0..<1)])
-            let request = SQLRequest<Void>(
+            let request = SQLRequest(
                 sql: "SELECT ? AS name, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["foo", "bar", "[\"baz\"]"],
                 adapter: adapter)
@@ -942,7 +1247,7 @@ extension FetchableRecordDecodableTests {
             test(record)
             
             let row = try Row.fetchOne(db, request)!
-            test(Record(row: row))
+            try test(Record(row: row))
         }
     }
     
@@ -969,7 +1274,7 @@ extension FetchableRecordDecodableTests {
                 XCTAssertNil(record.nestedUnkeyed.context)
             }
             
-            let request = SQLRequest<Void>(
+            let request = SQLRequest(
                 sql: "SELECT ? AS nestedKeyed, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["{\"name\":\"foo\"}", "bar", "[\"baz\"]"])
             
@@ -977,7 +1282,7 @@ extension FetchableRecordDecodableTests {
             test(record)
             
             let row = try Row.fetchOne(db, request)!
-            test(Record(row: row))
+            try test(Record(row: row))
         }
     }
     
@@ -1005,7 +1310,7 @@ extension FetchableRecordDecodableTests {
             }
             
             let adapter = SuffixRowAdapter(fromIndex: 1).addingScopes(["nestedKeyed": RangeRowAdapter(0..<1)])
-            let request = SQLRequest<Void>(
+            let request = SQLRequest(
                 sql: "SELECT ? AS name, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["foo", "bar", "[\"baz\"]"],
                 adapter: adapter)
@@ -1014,7 +1319,7 @@ extension FetchableRecordDecodableTests {
             test(record)
             
             let row = try Row.fetchOne(db, request)!
-            test(CustomizedRecord(row: row))
+            try test(CustomizedRecord(row: row))
         }
     }
     
@@ -1041,7 +1346,7 @@ extension FetchableRecordDecodableTests {
                 XCTAssertEqual(record.nestedUnkeyed.context, "JSON column: nestedUnkeyed")
             }
             
-            let request = SQLRequest<Void>(
+            let request = SQLRequest(
                 sql: "SELECT ? AS nestedKeyed, ? AS nestedSingle, ? AS nestedUnkeyed",
                 arguments: ["{\"name\":\"foo\"}", "bar", "[\"baz\"]"])
             
@@ -1049,7 +1354,7 @@ extension FetchableRecordDecodableTests {
             test(record)
             
             let row = try Row.fetchOne(db, request)!
-            test(CustomizedRecord(row: row))
+            try test(CustomizedRecord(row: row))
         }
     }
     
@@ -1064,9 +1369,9 @@ extension FetchableRecordDecodableTests {
         }
         
         // No error expected:
-        // - a is succesfully decoded because it consumes the one and unique
+        // - a is successfully decoded because it consumes the one and unique
         //   allowed missing key
-        // - b and c are succesfully decoded, because they are optionals, and
+        // - b and c are successfully decoded, because they are optionals, and
         //   all optionals decode missing keys are nil. This is because GRDB
         //   records accept rows with missing columns, and b and c may want to
         //   decode columns.
@@ -1130,4 +1435,60 @@ extension FetchableRecordDecodableTests {
             }
         }
     }
+
+    func testUserInfoJsonDecoding() throws {
+        struct NestedStruct : Codable {
+            let firstName: String?
+            let lastName: String?
+
+            init(firstName: String?, lastName: String?) {
+                self.firstName = firstName
+                self.lastName = lastName
+            }
+
+            init(from decoder: Decoder) throws {
+                let userInfoValue = decoder.userInfo[.testKey] as? String
+
+                let container = try decoder.container(keyedBy: CodingKeys.self)
+                if userInfoValue == "correct" {
+                    firstName = try container.decode(String.self, forKey: .firstName)
+                    lastName = try container.decode(String.self, forKey: .lastName)
+                } else {
+                    firstName = try container.decode(String.self, forKey: .lastName)
+                    lastName = try container.decode(String.self, forKey: .firstName)
+                }
+            }
+        }
+
+        struct StructWithNestedType : PersistableRecord, FetchableRecord, Codable {
+            static let databaseTableName = "t1"
+            static var databaseDecodingUserInfo: [CodingUserInfoKey: Any] = [CodingUserInfoKey.testKey: "correct"]
+            let nested: NestedStruct?
+        }
+
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.inDatabase { db in
+            try db.create(table: "t1") { t in
+                t.column("nested", .text)
+            }
+            let nested = NestedStruct(firstName: "Bob", lastName: "Dylan")
+            let value = StructWithNestedType(nested: nested)
+            try value.insert(db)
+
+            let parentModel = try StructWithNestedType.fetchAll(db)
+
+            guard let nestedModel = parentModel.first?.nested else {
+                XCTFail()
+                return
+            }
+
+            // Check the nested model contains the expected values of first and last name
+            XCTAssertEqual(nestedModel.firstName, "Bob")
+            XCTAssertEqual(nestedModel.lastName, "Dylan")
+        }
+    }
+}
+
+fileprivate extension CodingUserInfoKey {
+    static let testKey = CodingUserInfoKey(rawValue: "correct")!
 }

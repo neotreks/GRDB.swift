@@ -3,7 +3,7 @@ import XCTest
 
 class DatabaseValueConversionErrorTests: GRDBTestCase {
     func testFetchableRecord1() throws {
-        struct Record /* TODO GRDB6: FetchableRecord */ {
+        struct Record: FetchableRecord {
             var name: String
 
             init(row: Row) throws {
@@ -15,7 +15,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // conversion error
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT ? AS name")
+            let statement = try db.makeStatement(sql: "SELECT ? AS name")
             statement.arguments = [nil]
             
             do {
@@ -41,10 +41,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                _ = try Row.fetchCursor(statement)
-                    .map { try Record(row: $0) }
-                    .next()
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -69,7 +66,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // missing column
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT ? AS unused")
+            let statement = try db.makeStatement(sql: "SELECT ? AS unused")
             statement.arguments = ["ignored"]
             
             do {
@@ -94,10 +91,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                _ = try Row.fetchCursor(statement)
-                    .map { try Record(row: $0) }
-                    .next()
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -125,7 +119,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             case valid
         }
         
-        struct Record /* TODO GRDB6: FetchableRecord */ {
+        struct Record: FetchableRecord {
             var value: Value
 
             init(row: Row) throws {
@@ -137,7 +131,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // conversion error
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT 1, ? AS value")
+            let statement = try db.makeStatement(sql: "SELECT 1, ? AS value")
             statement.arguments = ["invalid"]
             
             do {
@@ -163,10 +157,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                _ = try Row.fetchCursor(statement)
-                    .map { try Record(row: $0) }
-                    .next()
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -191,7 +182,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // missing column
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT ? AS unused")
+            let statement = try db.makeStatement(sql: "SELECT ? AS unused")
             statement.arguments = ["ignored"]
             
             do {
@@ -216,10 +207,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                _ = try Row.fetchCursor(statement)
-                    .map { try Record(row: $0) }
-                    .next()
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -252,13 +240,12 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // conversion error
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT NULL AS name, ? AS team")
+            let statement = try db.makeStatement(sql: "SELECT NULL AS name, ? AS team")
             statement.arguments = ["invalid"]
             
             do {
                 let row = try Row.fetchOne(statement)!
-                // TODO GRDB6: _ = try Record(row: row)
-                _ = try RowDecoder().decode(Record.self, from: row)
+                _ = try Record(row: row)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -279,11 +266,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                let rows = try Row.fetchCursor(statement)
-                while let row = try rows.next() {
-                    _ = try RowDecoder().decode(Record.self, from: row)
-                }
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -308,13 +291,12 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // missing column
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT ? AS unused")
+            let statement = try db.makeStatement(sql: "SELECT ? AS unused")
             statement.arguments = ["ignored"]
             
             do {
                 let row = try Row.fetchOne(statement)!
-                // TODO GRDB6: _ = try Record(row: row)
-                _ = try RowDecoder().decode(Record.self, from: row)
+                _ = try Record(row: row)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -334,11 +316,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                let rows = try Row.fetchCursor(statement)
-                while let row = try rows.next() {
-                    _ = try RowDecoder().decode(Record.self, from: row)
-                }
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -374,13 +352,12 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // conversion error
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT NULL AS name, ? AS value")
+            let statement = try db.makeStatement(sql: "SELECT NULL AS name, ? AS value")
             statement.arguments = ["invalid"]
             
             do {
                 let row = try Row.fetchOne(statement)!
-                // TODO GRDB6: _ = try Record(row: row)
-                _ = try RowDecoder().decode(Record.self, from: row)
+                _ = try Record(row: row)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -401,11 +378,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                let rows = try Row.fetchCursor(statement)
-                while let row = try rows.next() {
-                    _ = try RowDecoder().decode(Record.self, from: row)
-                }
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -430,13 +403,12 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // missing column
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT ? AS unused")
+            let statement = try db.makeStatement(sql: "SELECT ? AS unused")
             statement.arguments = ["ignored"]
             
             do {
                 let row = try Row.fetchOne(statement)!
-                // TODO GRDB6: _ = try Record(row: row)
-                _ = try RowDecoder().decode(Record.self, from: row)
+                _ = try Record(row: row)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -456,11 +428,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                let rows = try Row.fetchCursor(statement)
-                while let row = try rows.next() {
-                    _ = try RowDecoder().decode(Record.self, from: row)
-                }
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -496,13 +464,12 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // conversion error
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT NULL AS name, ? AS value")
+            let statement = try db.makeStatement(sql: "SELECT NULL AS name, ? AS value")
             statement.arguments = ["invalid"]
             
             do {
                 let row = try Row.fetchOne(statement)!
-                // TODO GRDB6: _ = try Record(row: row)
-                _ = try RowDecoder().decode(Record.self, from: row)
+                _ = try Record(row: row)
                 XCTFail("Expected error")
             } catch let error as DecodingError {
                 switch error {
@@ -514,11 +481,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                let rows = try Row.fetchCursor(statement)
-                while let row = try rows.next() {
-                    _ = try RowDecoder().decode(Record.self, from: row)
-                }
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -550,13 +513,12 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         // missing column
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT ? AS unused")
+            let statement = try db.makeStatement(sql: "SELECT ? AS unused")
             statement.arguments = ["ignored"]
             
             do {
                 let row = try Row.fetchOne(statement)!
-                // TODO GRDB6: _ = try Record(row: row)
-                _ = try RowDecoder().decode(Record.self, from: row)
+                _ = try Record(row: row)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -576,11 +538,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Record.fetchOne(statement)
-                let rows = try Row.fetchCursor(statement)
-                while let row = try rows.next() {
-                    _ = try RowDecoder().decode(Record.self, from: row)
-                }
+                _ = try Record.fetchOne(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -606,14 +564,11 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
     func testStatementColumnConvertible1() throws {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT NULL AS name, ? AS team")
+            let statement = try db.makeStatement(sql: "SELECT NULL AS name, ? AS team")
             statement.arguments = ["invalid"]
             
             do {
-                // TODO GRDB6: _ = try String.fetchAll(statement)
-                _ = try Row.fetchCursor(statement)
-                    .map { try String.fastDecode(fromRow: $0, atUncheckedIndex: 0) }
-                    .next()
+                _ = try String.fetchAll(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -684,7 +639,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
     func testStatementColumnConvertible2() throws {
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT ? AS foo")
+            let statement = try db.makeStatement(sql: "SELECT ? AS foo")
             statement.arguments = [1000]
             
             do {
@@ -712,10 +667,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Int8.fetchAll(statement)
-                _ = try Row.fetchCursor(statement)
-                    .map { try Int8.fastDecode(fromRow: $0, atUncheckedIndex: 0) }
-                    .next()
+                _ = try Int8.fetchAll(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -790,14 +742,11 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
         
         let dbQueue = try makeDatabaseQueue()
         try dbQueue.read { db in
-            let statement = try db.makeSelectStatement(sql: "SELECT NULL AS name, ? AS team")
+            let statement = try db.makeStatement(sql: "SELECT NULL AS name, ? AS team")
             statement.arguments = ["invalid"]
             
             do {
-                // TODO GRDB6: _ = try Value.fetchAll(statement)
-                _ = try Row.fetchCursor(statement)
-                    .map { try Value.decode(fromRow: $0, atUncheckedIndex: 0) }
-                    .next()
+                _ = try Value.fetchAll(statement)
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -820,10 +769,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
             }
             
             do {
-                // TODO GRDB6: _ = try Value.fetchOne(statement, adapter: SuffixRowAdapter(fromIndex: 1))
-                _ = try Row.fetchCursor(statement)
-                    .map { try Value.decode(fromRow: $0, atUncheckedIndex: 1) }
-                    .next()
+                _ = try Value.fetchOne(statement, adapter: SuffixRowAdapter(fromIndex: 1))
                 XCTFail("Expected error")
             } catch let error as RowDecodingError {
                 switch error {
@@ -833,7 +779,7 @@ class DatabaseValueConversionErrorTests: GRDBTestCase {
                     XCTAssertEqual(context.sql, "SELECT NULL AS name, ? AS team")
                     XCTAssertEqual(context.statementArguments, ["invalid"])
                     XCTAssertEqual(error.description, """
-                        could not decode \(Value.self) from database value "invalid" - \
+                        could not decode \(Optional<Value>.self) from database value "invalid" - \
                         column: "team", \
                         column index: 1, \
                         row: [name:NULL team:"invalid"], \

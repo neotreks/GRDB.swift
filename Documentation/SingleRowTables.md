@@ -5,7 +5,9 @@ Let's talk about database tables that should contain a single row.
 
 Such tables can store configuration values, user preferences, and generally some global application state. They are a suitable alternative to `UserDefaults` in some applications, especially when configuration refers to values found in other database tables, and database integrity is a concern.
 
-This guide helps you implementing a single-row table with GRDB, with recommendations on the database schema, migrations, and the design of a [record] type.
+An alternative way to store such configuration is a table of key-value pairs: two columns, and one row for each configuration value. This technique works, but it has a few drawbacks: you will have to deal with the various types of configuration values (strings, integers, dates, etc), and you won't be able to define foreign keys. This is why we won't explore key-value tables.
+
+This guide helps you implementing a single-row table with GRDB, with recommendations on the database schema, migrations, and the design of a matching [record] type.
 
 - [The Single-Row Table]
 - [The Single-Row Record]
@@ -18,7 +20,7 @@ As always with GRDB, everything starts at the level of the database schema. Putt
 
 We want to instruct SQLite that our table must never contain more than one row. We will never have to wonder what to do if we were unlucky enough to find two rows with conflicting values in this table.
 
-SQLite is not able to guarantee that the table is never empty, so we have to deal with two cases: either the table is empty, either it contains a row.
+SQLite is not able to guarantee that the table is never empty, so we have to deal with two cases: either the table is empty, or it contains one row.
 
 Those two cases can create a nagging question for the application. By default, inserts fail when the row already exists, and updates fail when the table is empty. In order to avoid those errors, we will have the app perform an insert in case of a failed update (in the [The Single-Row Record] chapter). And we instruct SQLite to just replace the eventual existing row in case of conflicting inserts:
 
@@ -35,7 +37,7 @@ try db.create(table: "appConfiguration") { t in
         // Make sure the id column is always 1
         .check { $0 == 1 }
     
-    // The configuration colums
+    // The configuration columns
     t.column("flag", .boolean).notNull()
     // ... other columns
 }
@@ -76,7 +78,7 @@ migrator.registerMigration("appConfiguration") { db in
         // Single row guarantee
         t.column("id", .integer).primaryKey(onConflict: .replace).check { $0 == 1 }
         
-        // The configuration colums
+        // The configuration columns
         t.column("flag", .boolean).notNull()
         // ... other columns
     }
@@ -114,16 +116,14 @@ We make our record able to access the database:
 extension AppConfiguration: FetchableRecord, PersistableRecord {
 ```
 
-We have seen in the [The Single-Row Table] chapter that by default, updates throw an error if the database table is empty. To avoid this error, we instruct GRDB to perform an insert in case of a failed update (see [Persistence Methods] for more information):
+We have seen in the [The Single-Row Table] chapter that by default, updates throw an error if the database table is empty. To avoid this error, we instruct GRDB to insert the missing default configuration before attempting to update (see [Persistence Callbacks] for more information about the `willSave` method):
 
 ```swift
     // Customize the default PersistableRecord behavior
-    func update(_ db: Database, columns: Set<String>) throws {
-        do {
-            try performUpdate(db, columns: columns)
-        } catch PersistenceError.recordNotFound {
-            // No row was updated: perform an insert
-            try performInsert(db)
+    func willUpdate(_ db: Database, columns: Set<String>) throws {
+        // Insert the default configuration if it does not exist yet.
+        if try !exists(db) {
+            try AppConfiguration.default.insert(db)
         }
     }
 ```
@@ -163,12 +163,13 @@ try dbQueue.write { db in
     try config.update(db)
     try config.save(db)
     try config.insert(db)
+    try config.upsert(db)
 }
 ```
 
-The three `update`, `save` and `insert` methods can be used interchangeably: all three make sure the configuration is stored in the database.
+The four `update`, `save`, `insert` and `upsert` methods can be used interchangeably. They all make sure the configuration is stored in the database.
 
-The `updateChanges` method only updates the values changed by its closure argument (and performs an insert if the database table is empty).
+The `updateChanges` method only updates the values changed by its closure argument (and performs an initial insert of default configuration if the database table is empty).
 
 See [Persistence Methods] for more information.
 
@@ -183,7 +184,7 @@ try db.create(table: "appConfiguration") { t in
     // Single row guarantee
     t.column("id", .integer).primaryKey(onConflict: .replace).check { $0 == 1 }
     
-    // The configuration colums
+    // The configuration columns
     t.column("flag", .boolean).notNull()
     // ... other columns
 }
@@ -213,12 +214,10 @@ extension AppConfiguration {
 // Database Access
 extension AppConfiguration: FetchableRecord, PersistableRecord {
     // Customize the default PersistableRecord behavior
-    func update(_ db: Database, columns: Set<String>) throws {
-        do {
-            try performUpdate(db, columns: columns)
-        } catch PersistenceError.recordNotFound {
-            // No row was updated: perform an insert
-            try performInsert(db)
+    func willUpdate(_ db: Database, columns: Set<String>) throws {
+        // Insert the default configuration if it does not exist yet.
+        if try !exists(db) {
+            try AppConfiguration.default.insert(db)
         }
     }
     
@@ -237,4 +236,5 @@ extension AppConfiguration: FetchableRecord, PersistableRecord {
 [The Single-Row Record]: #the-single-row-record
 [Wrap-Up]: #wrap-up
 [DRY]: https://en.wikipedia.org/wiki/Don%27t_repeat_yourself
+[Persistence Callbacks]: ../README.md#persistence-callbacks
 [Persistence Methods]: ../README.md#persistence-methods

@@ -5,13 +5,20 @@ private struct TestError : Error { }
 
 class CursorTests: GRDBTestCase {
     
+    func testIsEmpty() {
+        XCTAssertTrue(try AnyCursor([Int]()).isEmpty)
+        XCTAssertFalse(try AnyCursor([1]).isEmpty)
+    }
+    
     func testContainsEquatable() {
         XCTAssertTrue(try AnyCursor([1, 2]).contains(1))
+        XCTAssertTrue(try AnyCursor([1, 2]).contains(2))
         XCTAssertFalse(try AnyCursor([1, 2]).contains(3))
     }
     
     func testContainsClosure() {
         XCTAssertTrue(try AnyCursor([1, 2]).contains { $0 == 1 })
+        XCTAssertTrue(try AnyCursor([1, 2]).contains { $0 == 2 })
         XCTAssertFalse(try AnyCursor([1, 2]).contains { $0 == 3 })
         do {
             _ = try AnyCursor([1, 2]).contains { _ -> Bool in throw TestError() }
@@ -195,6 +202,13 @@ class CursorTests: GRDBTestCase {
             let collection: [Int] = try collect(cursor, minimumCapacity: 100)
             XCTAssertEqual(collection, [1, 2, 1, 3])
         }
+        
+        do {
+            let cursor = AnyCursor([1, 2, 1, 3])
+            var collection = [0, 4]
+            try collection.append(contentsOf: cursor)
+            XCTAssertEqual(collection, [0, 4, 1, 2, 1, 3])
+        }
     }
     
     func testSet() throws {
@@ -245,5 +259,25 @@ class CursorTests: GRDBTestCase {
             let dictionary = try Dictionary(minimumCapacity: 100, uniqueKeysWithValues: cursor)
             XCTAssertEqual(dictionary, [1: "a", 2: "b", 3: "a"])
         }
+    }
+    
+    func testArrayInitializer() throws {
+        // Test that Array initializer calls `forEach`.
+        // This is important in order to prevent
+        // <https://github.com/groue/GRDB.swift/issues/1124>
+        class TestCursor: Cursor {
+            func next() -> Int? {
+                fatalError("Must not be called during Array creation")
+            }
+            
+            func forEach(_ body: (Int) throws -> Void) throws {
+                try body(0)
+                try body(1)
+            }
+        }
+        
+        let cursor = TestCursor()
+        let elements = try Array(cursor)
+        XCTAssertEqual(elements, [0, 1])
     }
 }

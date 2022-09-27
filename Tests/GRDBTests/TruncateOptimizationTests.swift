@@ -85,6 +85,53 @@ class TruncateOptimizationTests: GRDBTestCase {
         }
     }
     
+    func testExecuteDeleteCaseSensitivity() throws {
+        let dbQueue = try makeDatabaseQueue()
+        
+        class DeletionObserver : TransactionObserver {
+            var deletionCount = 0
+            
+            func observes(eventsOfKind eventKind: DatabaseEventKind) -> Bool {
+                if case .delete(tableName: "pLaYeR") = eventKind {
+                    return true
+                } else {
+                    return false
+                }
+            }
+            
+            func databaseDidChange(with event: DatabaseEvent) {
+                if case .delete = event.kind {
+                    deletionCount += 1
+                }
+            }
+            
+            func databaseDidCommit(_ db: Database) { }
+            func databaseDidRollback(_ db: Database) { }
+        }
+
+        let observer = DeletionObserver()
+        dbQueue.add(transactionObserver: observer, extent: .databaseLifetime)
+        
+        try dbQueue.writeWithoutTransaction { db in
+            observer.deletionCount = 0
+            try db.execute(sql: "CREATE TABLE pLaYeR(a)")
+            try db.execute(sql: "INSERT INTO pLaYeR VALUES (NULL)")
+            try db.execute(sql: "INSERT INTO pLaYeR VALUES (NULL)")
+            try db.execute(sql: "DELETE FROM pLaYeR")
+            XCTAssertEqual(observer.deletionCount, 2)
+            
+            observer.deletionCount = 0
+            try db.execute(sql: "INSERT INTO pLaYeR VALUES (NULL)")
+            try db.execute(sql: "DELETE FROM PLAYER")
+            XCTAssertEqual(observer.deletionCount, 1)
+            
+            observer.deletionCount = 0
+            try db.execute(sql: "INSERT INTO pLaYeR VALUES (NULL)")
+            try db.execute(sql: "DELETE FROM player")
+            XCTAssertEqual(observer.deletionCount, 1)
+        }
+    }
+    
     func testExecuteDeleteWithPreparedStatement() throws {
         let dbQueue = try makeDatabaseQueue()
         
@@ -94,7 +141,7 @@ class TruncateOptimizationTests: GRDBTestCase {
         
         try dbQueue.writeWithoutTransaction { db in
             try db.execute(sql: "CREATE TABLE t(a)")
-            let deleteStatement = try db.makeUpdateStatement(sql: "DELETE FROM t")
+            let deleteStatement = try db.makeStatement(sql: "DELETE FROM t")
             
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
@@ -106,6 +153,37 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             deletionEvents = []
             try deleteStatement.execute()
+            XCTAssertEqual(deletionEvents.count, 1)
+            XCTAssertEqual(deletionEvents[0], ["t": 1])
+        }
+    }
+    
+    func testExecuteDeleteWithCachedPreparedStatement() throws {
+        let dbQueue = try makeDatabaseQueue()
+        
+        var deletionEvents: [[String: Int]] = []
+        
+        try dbQueue.writeWithoutTransaction { db in
+            try db.execute(sql: "CREATE TABLE t(a)")
+            try db.cachedStatement(sql: "DELETE FROM t").execute()
+            
+            // Start observing after statement has been cached: it does not
+            // prevent the truncate optimization.
+            let observer = DeletionObserver { deletionEvents.append($0) }
+            db.add(transactionObserver: observer, extent: .databaseLifetime)
+
+            try db.execute(sql: "INSERT INTO t VALUES (NULL)")
+            try db.execute(sql: "INSERT INTO t VALUES (NULL)")
+            deletionEvents = []
+            // This must be a recompiled statement, so that the truncate
+            // optimization is prevented.
+            try db.cachedStatement(sql: "DELETE FROM t").execute()
+            XCTAssertEqual(deletionEvents.count, 1)
+            XCTAssertEqual(deletionEvents[0], ["t": 2])
+            
+            try db.execute(sql: "INSERT INTO t VALUES (NULL)")
+            deletionEvents = []
+            try db.cachedStatement(sql: "DELETE FROM t").execute()
             XCTAssertEqual(deletionEvents.count, 1)
             XCTAssertEqual(deletionEvents[0], ["t": 1])
         }
@@ -140,7 +218,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TABLE t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.tableExists("t"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TABLE t") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TABLE t") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.tableExists("t"))
         }
@@ -153,7 +231,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TABLE t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.tableExists("t"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TABLE t") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TABLE t") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.tableExists("t"))
         }
@@ -188,7 +266,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TEMPORARY TABLE t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.tableExists("t"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TABLE t") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TABLE t") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.tableExists("t"))
         }
@@ -201,7 +279,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TEMPORARY TABLE t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.tableExists("t"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TABLE t") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TABLE t") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.tableExists("t"))
         }
@@ -236,7 +314,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE VIRTUAL TABLE t USING fts3(a)")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.tableExists("t"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TABLE t") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TABLE t") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.tableExists("t"))
         }
@@ -249,7 +327,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE VIRTUAL TABLE t USING fts3(a)")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.tableExists("t"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TABLE t") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TABLE t") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.tableExists("t"))
         }
@@ -287,7 +365,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE VIEW v AS SELECT * FROM t")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.viewExists("v"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP VIEW v") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP VIEW v") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.viewExists("v"))
         }
@@ -301,7 +379,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE VIEW v AS SELECT * FROM t")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.viewExists("v"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP VIEW v") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP VIEW v") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.viewExists("v"))
         }
@@ -339,7 +417,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TEMPORARY VIEW v AS SELECT * FROM t")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.viewExists("v"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP VIEW v") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP VIEW v") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.viewExists("v"))
         }
@@ -353,7 +431,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TEMPORARY VIEW v AS SELECT * FROM t")
             try db.execute(sql: "INSERT INTO t VALUES (NULL)")
             try XCTAssertTrue(db.viewExists("v"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP VIEW v") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP VIEW v") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.viewExists("v"))
         }
@@ -389,7 +467,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE INDEX i ON t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (1)")
             try XCTAssertFalse(db.indexes(on: "t").isEmpty)
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP INDEX i") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP INDEX i") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertTrue(db.indexes(on: "t").isEmpty)
         }
@@ -403,7 +481,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE INDEX i ON t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (1)")
             try XCTAssertFalse(db.indexes(on: "t").isEmpty)
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP INDEX i") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP INDEX i") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertTrue(db.indexes(on: "t").isEmpty)
         }
@@ -439,7 +517,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE INDEX i ON t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (1)")
             try XCTAssertFalse(db.indexes(on: "t").isEmpty)
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP INDEX i") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP INDEX i") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertTrue(db.indexes(on: "t").isEmpty)
         }
@@ -453,7 +531,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE INDEX i ON t(a)")
             try db.execute(sql: "INSERT INTO t VALUES (1)")
             try XCTAssertFalse(db.indexes(on: "t").isEmpty)
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP INDEX i") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP INDEX i") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertTrue(db.indexes(on: "t").isEmpty)
         }
@@ -488,7 +566,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TABLE t(a)")
             try db.execute(sql: "CREATE TRIGGER r INSERT ON t BEGIN DELETE FROM t; END")
             try XCTAssertTrue(db.triggerExists("r"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TRIGGER r") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TRIGGER r") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.triggerExists("r"))
         }
@@ -501,7 +579,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TABLE t(a)")
             try db.execute(sql: "CREATE TRIGGER r INSERT ON t BEGIN DELETE FROM t; END")
             try XCTAssertTrue(db.triggerExists("r"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TRIGGER r") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TRIGGER r") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.triggerExists("r"))
         }
@@ -536,7 +614,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TABLE t(a)")
             try db.execute(sql: "CREATE TEMPORARY TRIGGER r INSERT ON t BEGIN DELETE FROM t; END")
             try XCTAssertTrue(db.triggerExists("r"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TRIGGER r") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TRIGGER r") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.triggerExists("r"))
         }
@@ -549,7 +627,7 @@ class TruncateOptimizationTests: GRDBTestCase {
             try db.execute(sql: "CREATE TABLE t(a)")
             try db.execute(sql: "CREATE TEMPORARY TRIGGER r INSERT ON t BEGIN DELETE FROM t; END")
             try XCTAssertTrue(db.triggerExists("r"))
-            let dropStatement = try db.makeUpdateStatement(sql: "DROP TRIGGER r") // compile...
+            let dropStatement = try db.makeStatement(sql: "DROP TRIGGER r") // compile...
             try dropStatement.execute() // ... then execute
             try XCTAssertFalse(db.triggerExists("r"))
         }

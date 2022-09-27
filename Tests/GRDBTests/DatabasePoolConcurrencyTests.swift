@@ -967,10 +967,6 @@ class DatabasePoolConcurrencyTests: GRDBTestCase {
     }
     
     func testTargetQueue() throws {
-        guard #available(OSX 10.12, tvOS 10.0, *) else {
-            throw XCTSkip("dispatchPrecondition(condition:) is not available")
-        }
-        
         func test(targetQueue: DispatchQueue) throws {
             dbConfiguration.targetQueue = targetQueue
             let dbPool = try makeDatabasePool()
@@ -994,11 +990,53 @@ class DatabasePoolConcurrencyTests: GRDBTestCase {
         waitForExpectations(timeout: 2, handler: nil)
     }
     
-    func testQoS() throws {
-        guard #available(OSX 10.12, tvOS 10.0, *) else {
-            throw XCTSkip("dispatchPrecondition(condition:) is not available")
+    func testWriteTargetQueue() throws {
+        func test(targetQueue: DispatchQueue, writeTargetQueue: DispatchQueue) throws {
+            dbConfiguration.targetQueue = targetQueue
+            dbConfiguration.writeTargetQueue = writeTargetQueue
+            let dbPool = try makeDatabasePool()
+            try dbPool.write { _ in
+                dispatchPrecondition(condition: .onQueue(writeTargetQueue))
+            }
+            try dbPool.read { _ in
+                dispatchPrecondition(condition: .onQueue(targetQueue))
+            }
         }
         
+        // background queue
+        try test(targetQueue: .global(qos: .background), writeTargetQueue: DispatchQueue(label: "writer"))
+        
+        // main queue
+        let expectation = self.expectation(description: "main")
+        DispatchQueue.global(qos: .default).async {
+            try! test(targetQueue: .main, writeTargetQueue: .main)
+            expectation.fulfill()
+        }
+        waitForExpectations(timeout: 2, handler: nil)
+    }
+    
+    func testWriteTargetQueueReadOnly() throws {
+        // Create a database before we perform read-only accesses
+        _ = try makeDatabasePool(filename: "test")
+        
+        func test(targetQueue: DispatchQueue, writeTargetQueue: DispatchQueue) throws {
+            dbConfiguration.readonly = true
+            dbConfiguration.targetQueue = targetQueue
+            dbConfiguration.writeTargetQueue = writeTargetQueue // unused
+            let dbPool = try makeDatabasePool(filename: "test")
+            try dbPool.write { _ in
+                // Not on writeTargetQueue because read-only
+                dispatchPrecondition(condition: .onQueue(targetQueue))
+            }
+            try dbPool.read { _ in
+                dispatchPrecondition(condition: .onQueue(targetQueue))
+            }
+        }
+        
+        try test(targetQueue: .global(qos: .background), writeTargetQueue: DispatchQueue(label: "writer"))
+    }
+
+    func testQoS() throws {
         func test(qos: DispatchQoS) throws {
             // https://forums.swift.org/t/what-is-the-default-target-queue-for-a-serial-queue/18094/5
             //
@@ -1266,7 +1304,7 @@ class DatabasePoolConcurrencyTests: GRDBTestCase {
             // Wait for read to start
             s1.wait()
             
-            dbPool.barrierWriteWithoutTransaction { _ in }
+            try! dbPool.barrierWriteWithoutTransaction { _ in }
             expectation.fulfill()
             s4.signal()
         }

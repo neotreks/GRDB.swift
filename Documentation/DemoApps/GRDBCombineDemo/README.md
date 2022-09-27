@@ -3,9 +3,11 @@ Combine + SwiftUI Demo Application
 
 <img align="right" src="https://github.com/groue/GRDB.swift/raw/master/Documentation/DemoApps/GRDBCombineDemo/Screenshot.png" width="50%">
 
-**This demo application is a Combine + SwiftUI application, based on the MVVM design pattern.** For a demo application that uses UIKit, see [GRDBDemoiOS](../GRDBDemoiOS/README.md).
+**This demo application is a Combine + SwiftUI application.** For a demo application that uses UIKit, see [GRDBDemoiOS](../GRDBDemoiOS/README.md), and for Async/Await + SwiftUI, see [GRDBAsyncDemo](../GRDBAsyncDemo/README.md).
 
-> :point_up: **Note**: This demo app is not a project template. Do not copy it as a starting point for your application. Instead, create a new project, choose a GRDB [installation method](../../../README.md#installation), and use the demo as an inspiration.
+**Requirements**: iOS 15.0+ / Xcode 12+
+
+> **Note**: This demo app is not a project template. Do not copy it as a starting point for your application. Instead, create a new project, choose a GRDB [installation method](../../../README.md#installation), and use the demo as an inspiration.
 
 The topics covered in this demo are:
 
@@ -19,11 +21,11 @@ The topics covered in this demo are:
 
 - [GRDBCombineDemoApp.swift](GRDBCombineDemo/GRDBCombineDemoApp.swift)
     
-    `GRDBCombineDemoApp` feeds the app views with a database.
+    `GRDBCombineDemoApp` feeds the app views with a database, through the SwiftUI environment.
 
 - [AppDatabase.swift](GRDBCombineDemo/AppDatabase.swift)
     
-    `AppDatabase` is the type that grants database access. It uses [DatabaseMigrator](../../Migrations.md) in order to setup the database schema, and [ValueObservation](../../../README.md#valueobservation) in order to let the application observe database changes.
+    `AppDatabase` is the type that grants database access. It uses [DatabaseMigrator](../../Migrations.md) in order to setup the database schema.
 
 - [Persistence.swift](GRDBCombineDemo/Persistence.swift)
     
@@ -31,18 +33,19 @@ The topics covered in this demo are:
 
 - [Player.swift](GRDBCombineDemo/Player.swift)
     
-    `Player` is a [Record](../../../README.md#records) type, able to read and write in the database. It conforms to the standard Codable protocol in order to gain all advantages of [Codable Records](../../../README.md#codable-records). It defines the database requests used by the application.
+    `Player` is a [Record](../../../README.md#records) type, able to read and write in the database. It conforms to the standard Codable protocol in order to gain all advantages of [Codable Records](../../../README.md#codable-records).
 
-- [PlayerList.swift](GRDBCombineDemo/Views/PlayerList.swift) and [PlayerListViewModel.swift](GRDBCombineDemo/ViewModels/PlayerListViewModel.swift)
+- [PlayerRequest.swift](GRDBCombineDemo/PlayerRequest.swift), [AppView.swift](GRDBCombineDemo/Views/AppView.swift)
     
-    `PlayerList` is the SwiftUI view that displays the list of players, fed by `PlayerListViewModel`.
-
-- [PlayerForm.swift](GRDBCombineDemo/Views/PlayerForm.swift), [PlayerEditionView.swift](GRDBCombineDemo/Views/PlayerEditionView.swift), [PlayerCreationSheet.swift](GRDBCombineDemo/Views/PlayerCreationSheet.swift) and [PlayerFormViewModel.swift](GRDBCombineDemo/ViewModels/PlayerFormViewModel.swift).
+    `PlayerRequest` defines the player requests used by the app (sorted by score, or by name).
     
-    `PlayerForm` is the SwiftUI view that displays a Player editing form. It is embedded in `PlayerEditionView` and `PlayerCreationSheet`, two SwiftUI views that edit or create a player. All those views are fed by `PlayerFormViewModel`.
+    `PlayerRequest` feeds the `@Query` property wrapper (`@Query`, defined in [GRDBQuery](https://github.com/groue/GRDBQuery), allows SwiftUI views to display up-to-date database content).
+    
+    `AppView` is the SwiftUI view that uses `@Query` in order to feed its player list.
 
 - [GRDBCombineDemoTests](GRDBCombineDemoTests)
     
     - Test the database schema
     - Test the `Player` record and its requests
+    - Test the `PlayerRequest` methods that feed the list of players.
     - Test the `AppDatabase` methods that let the app access the database.

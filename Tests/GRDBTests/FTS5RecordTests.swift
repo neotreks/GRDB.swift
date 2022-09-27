@@ -11,7 +11,7 @@ private struct Book {
 
 extension Book : FetchableRecord {
     init(row: Row) {
-        id = row[Column.rowID]
+        id = row[.rowID]
         title = row["title"]
         author = row["author"]
         body = row["body"]
@@ -21,21 +21,21 @@ extension Book : FetchableRecord {
 extension Book : MutablePersistableRecord {
     static let databaseTableName = "books"
     static let databaseSelection: [SQLSelectable] = [AllColumns(), Column.rowID]
-
+    
     func encode(to container: inout PersistenceContainer) {
-        container[Column.rowID] = id
+        container[.rowID] = id
         container["title"] = title
         container["author"] = author
         container["body"] = body
     }
     
-    mutating func didInsert(with rowID: Int64, for column: String?) {
-        id = rowID
+    mutating func didInsert(_ inserted: InsertionSuccess) {
+        id = inserted.rowID
     }
 }
 
 class FTS5RecordTests: GRDBTestCase {
-    override func setup(_ dbWriter: DatabaseWriter) throws {
+    override func setup(_ dbWriter: some DatabaseWriter) throws {
         try dbWriter.write { db in
             try db.create(virtualTable: "books", using: FTS5()) { t in
                 t.column("title")
@@ -72,6 +72,9 @@ class FTS5RecordTests: GRDBTestCase {
             
             let pattern = FTS5Pattern(matchingAllTokensIn: "Herman Melville")!
             XCTAssertEqual(try Book.matching(pattern).fetchCount(db), 1)
+            XCTAssertEqual(try Book.filter(Column("books").match(pattern)).fetchCount(db), 1)
+            XCTAssertEqual(try Book.filter(Column("author").match(pattern)).fetchCount(db), 1)
+            XCTAssertEqual(try Book.filter(Column("title").match(pattern)).fetchCount(db), 0)
         }
     }
 

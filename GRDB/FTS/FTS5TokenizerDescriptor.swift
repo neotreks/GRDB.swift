@@ -5,7 +5,7 @@
 ///         t.tokenizer = .unicode61() // FTS5TokenizerDescriptor
 ///     }
 ///
-/// See https://www.sqlite.org/fts5.html#tokenizers
+/// See <https://www.sqlite.org/fts5.html#tokenizers>
 public struct FTS5TokenizerDescriptor {
     /// The tokenizer components
     ///
@@ -55,7 +55,7 @@ public struct FTS5TokenizerDescriptor {
     ///     - tokenCharacters: Unless empty (the default), SQLite will
     ///       consider these characters as token characters.
     ///
-    /// See https://www.sqlite.org/fts5.html#ascii_tokenizer
+    /// See <https://www.sqlite.org/fts5.html#ascii_tokenizer>
     public static func ascii(
         separators: Set<Character> = [],
         tokenCharacters: Set<Character> = [])
@@ -65,9 +65,10 @@ public struct FTS5TokenizerDescriptor {
             // TODO: test "=" and "\"", "(" and ")" as separators, with
             // both FTS3Pattern(matchingAnyTokenIn:tokenizer:)
             // and Database.create(virtualTable:using:)
-            let separatorComponents = DatabaseQueue().inDatabase { db in
-                // Assume quoting a string never fails
-                try! [
+            //
+            // Assume quoting a string in an in-memory database never fails
+            let separatorComponents = try! DatabaseQueue().inDatabase { db in
+                try [
                     "separators",
                     separators
                         .map { String($0) }
@@ -81,9 +82,10 @@ public struct FTS5TokenizerDescriptor {
             // TODO: test "=" and "\"", "(" and ")" as tokenCharacters, with
             // both FTS3Pattern(matchingAnyTokenIn:tokenizer:)
             // and Database.create(virtualTable:using:)
-            let tokenCharactersComponents = DatabaseQueue().inDatabase { db in
-                // Assume quoting a string never fails
-                try! [
+            //
+            // Assume quoting a string in an in-memory database never fails
+            let tokenCharactersComponents = try! DatabaseQueue().inDatabase { db in
+                try [
                     "tokenchars",
                     tokenCharacters
                         .sorted()
@@ -108,7 +110,7 @@ public struct FTS5TokenizerDescriptor {
     ///     - base: An eventual wrapping tokenizer which replaces the
     //        default unicode61() base tokenizer.
     ///
-    /// See https://www.sqlite.org/fts5.html#porter_tokenizer
+    /// See <https://www.sqlite.org/fts5.html#porter_tokenizer>
     public static func porter(wrapping base: FTS5TokenizerDescriptor? = nil) -> FTS5TokenizerDescriptor {
         if let base = base {
             return FTS5TokenizerDescriptor(components: ["porter"] + base.components)
@@ -131,7 +133,7 @@ public struct FTS5TokenizerDescriptor {
     ///     - tokenCharacters: Unless empty (the default), SQLite will
     ///       consider these characters as token characters.
     ///
-    /// See https://www.sqlite.org/fts5.html#unicode61_tokenizer
+    /// See <https://www.sqlite.org/fts5.html#unicode61_tokenizer>
     public static func unicode61(
         diacritics: FTS5.Diacritics = .removeLegacy,
         separators: Set<Character> = [],
@@ -156,9 +158,10 @@ public struct FTS5TokenizerDescriptor {
             // TODO: test "=" and "\"", "(" and ")" as separators, with
             // both FTS3Pattern(matchingAnyTokenIn:tokenizer:)
             // and Database.create(virtualTable:using:)
-            let separatorComponents = DatabaseQueue().inDatabase { db in
-                // Assume quoting a string never fails
-                try! [
+            //
+            // Assume quoting a string in an in-memory database never fails
+            let separatorComponents = try! DatabaseQueue().inDatabase { db in
+                try [
                     "separators",
                     separators
                         .sorted()
@@ -174,9 +177,10 @@ public struct FTS5TokenizerDescriptor {
             // TODO: test "=" and "\"", "(" and ")" as tokenCharacters, with
             // both FTS3Pattern(matchingAnyTokenIn:tokenizer:)
             // and Database.create(virtualTable:using:)
-            let tokenCharactersComponents = DatabaseQueue().inDatabase { db in
-                // Assume quoting a string never fails
-                try! [
+            //
+            // Assume quoting a string in an in-memory database never fails
+            let tokenCharactersComponents = try! DatabaseQueue().inDatabase { db in
+                try [
                     "tokenchars",
                     tokenCharacters
                         .sorted()

@@ -24,9 +24,9 @@ Your attention will be needed, though, in the area of database observation.
 
 GRDB requirements have been bumped:
 
-- **Swift 5.2+** (was Swift 4.2+)
-- **Xcode 11.4+** (was Xcode 10.0+)
-- **iOS 10.0+** (was iOS 9.0+)
+- **Swift 5.3+** (was Swift 4.2+)
+- **Xcode 12.0+** (was Xcode 10.0+)
+- **iOS 11.0+** (was iOS 9.0+)
 - **macOS 10.10+** (was macOS 10.9+)
 - tvOS 9.0+ (unchanged)
 - watchOS 2.0+ (unchanged)
@@ -387,16 +387,16 @@ let publisher = observation
     
     > :question: This change makes it possible to concatenate subqueries with the UNION operator.
 
-4. In order to extract raw SQL string from an [SQLLiteral], you now need a database connection:
+4. In order to extract raw SQL string from an [SQL literal], you now need a database connection:
 
     ```swift
-    let query: SQLLiteral = "UPDATE player SET name = \(name) WHERE id = \(id)"
-    
     // BEFORE: GRDB 4
+    let query: SQLLiteral = "UPDATE player SET name = \(name) WHERE id = \(id)"
     print(query.sql)       // prints "UPDATE player SET name = ? WHERE id = ?"
     print(query.arguments) // prints ["O'Brien", 42]
      
     // NEW: GRDB 5
+    let query: SQL = "UPDATE player SET name = \(name) WHERE id = \(id)"
     let (sql, arguments) = try dbQueue.read(query.build)
     print(sql)             // prints "UPDATE player SET name = ? WHERE id = ?"
     print(arguments)       // prints ["O'Brien", 42]
@@ -422,7 +422,7 @@ let publisher = observation
     }
     ```
 
-6. The `TableRecord.selectionSQL()` method is no longer avaible. When you need to embed the columns selected by a record type in an SQL request, you now have to use [SQL Interpolation]:
+6. The `TableRecord.selectionSQL()` method is no longer available. When you need to embed the columns selected by a record type in an SQL request, you now have to use [SQL Interpolation]:
 
     ```swift
     // BEFORE: GRDB 4
@@ -506,7 +506,7 @@ let publisher = observation
 [Custom SQL functions]: ../README.md#custom-sql-functions
 [Batch updates]: ../README.md#update-requests
 [SQL Interpolation]: SQLInterpolation.md
-[SQLLiteral]: SQLInterpolation.md#sqlliteral
+[SQL literal]: SQLInterpolation.md#sql-literal
 [SQLRequest]: ../README.md#custom-requests
 [QueryInterfaceRequest]: ../README.md#requests
 [Combine publishers]: Combine.md

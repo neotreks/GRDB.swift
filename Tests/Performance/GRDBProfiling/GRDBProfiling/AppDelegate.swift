@@ -202,7 +202,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         try dbQueue.write(_insertPositionalValues)
         
-        dbQueue.read { db in
+        try dbQueue.read { db in
             assert(try! Int.fetchOne(db, sql: "SELECT COUNT(*) FROM items")! == insertedRowCount)
             assert(try! Int.fetchOne(db, sql: "SELECT MIN(i0) FROM items")! == 0)
             assert(try! Int.fetchOne(db, sql: "SELECT MAX(i9) FROM items")! == insertedRowCount - 1)
@@ -211,7 +211,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func _insertPositionalValues(_ db: Database) throws {
-        let statement = try db.makeUpdateStatement(sql: "INSERT INTO items (i0, i1, i2, i3, i4, i5, i6, i7, i8, i9) VALUES (?,?,?,?,?,?,?,?,?,?)")
+        let statement = try db.makeStatement(sql: "INSERT INTO items (i0, i1, i2, i3, i4, i5, i6, i7, i8, i9) VALUES (?,?,?,?,?,?,?,?,?,?)")
         for i in 0..<insertedRowCount {
             try statement.execute(arguments: [i, i, i, i, i, i, i, i, i, i])
         }
@@ -231,7 +231,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         try dbQueue.write(_insertNamedValues)
         
-        dbQueue.read { db in
+        try dbQueue.read { db in
             assert(try! Int.fetchOne(db, sql: "SELECT COUNT(*) FROM items")! == insertedRowCount)
             assert(try! Int.fetchOne(db, sql: "SELECT MIN(i0) FROM items")! == 0)
             assert(try! Int.fetchOne(db, sql: "SELECT MAX(i9) FROM items")! == insertedRowCount - 1)
@@ -240,7 +240,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
     }
     
     func _insertNamedValues(_ db: Database) throws {
-        let statement = try db.makeUpdateStatement(sql: "INSERT INTO items (i0, i1, i2, i3, i4, i5, i6, i7, i8, i9) VALUES (:i0, :i1, :i2, :i3, :i4, :i5, :i6, :i7, :i8, :i9)")
+        let statement = try db.makeStatement(sql: "INSERT INTO items (i0, i1, i2, i3, i4, i5, i6, i7, i8, i9) VALUES (:i0, :i1, :i2, :i3, :i4, :i5, :i6, :i7, :i8, :i9)")
         for i in 0..<insertedRowCount {
             try statement.execute(arguments: ["i0": i, "i1": i, "i2": i, "i3": i, "i4": i, "i5": i, "i6": i, "i7": i, "i8": i, "i9": i])
         }
@@ -260,7 +260,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         try dbQueue.write(_insertStructs)
         
-        dbQueue.read { db in
+        try dbQueue.read { db in
             assert(try! Int.fetchOne(db, sql: "SELECT COUNT(*) FROM items")! == insertedRowCount)
             assert(try! Int.fetchOne(db, sql: "SELECT MIN(i0) FROM items")! == 0)
             assert(try! Int.fetchOne(db, sql: "SELECT MAX(i9) FROM items")! == insertedRowCount - 1)
@@ -288,7 +288,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         try dbQueue.write(_insertCodables)
         
-        dbQueue.read { db in
+        try dbQueue.read { db in
             assert(try! Int.fetchOne(db, sql: "SELECT COUNT(*) FROM items")! == insertedRowCount)
             assert(try! Int.fetchOne(db, sql: "SELECT MIN(i0) FROM items")! == 0)
             assert(try! Int.fetchOne(db, sql: "SELECT MAX(i9) FROM items")! == insertedRowCount - 1)
@@ -316,7 +316,7 @@ class AppDelegate: NSObject, NSApplicationDelegate {
         
         try dbQueue.write(_insertRecords)
         
-        dbQueue.read { db in
+        try dbQueue.read { db in
             assert(try! Int.fetchOne(db, sql: "SELECT COUNT(*) FROM items")! == insertedRowCount)
             assert(try! Int.fetchOne(db, sql: "SELECT MIN(i0) FROM items")! == 0)
             assert(try! Int.fetchOne(db, sql: "SELECT MAX(i9) FROM items")! == insertedRowCount - 1)
@@ -361,7 +361,7 @@ class ItemRecord : Record {
         "items"
     }
     
-    required init(row: GRDB.Row) {
+    required init(row: GRDB.Row) throws {
         i0 = row["i0"]
         i1 = row["i1"]
         i2 = row["i2"]
@@ -372,10 +372,10 @@ class ItemRecord : Record {
         i7 = row["i7"]
         i8 = row["i8"]
         i9 = row["i9"]
-        super.init(row: row)
+        try super.init(row: row)
     }
     
-    override func encode(to container: inout PersistenceContainer) {
+    override func encode(to container: inout PersistenceContainer) throws {
         container["i0"] = i0
         container["i1"] = i1
         container["i2"] = i2

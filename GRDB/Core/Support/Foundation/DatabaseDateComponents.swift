@@ -69,21 +69,22 @@ public struct DatabaseDateComponents: DatabaseValueConvertible, StatementColumnC
     /// - parameters:
     ///     - sqliteStatement: A pointer to an SQLite statement.
     ///     - index: The column index.
-    public init?(sqliteStatement: SQLiteStatement, index: Int32) {
+    @inline(__always)
+    @inlinable
+    public init?(sqliteStatement: SQLiteStatement, index: CInt) {
         guard let cString = sqlite3_column_text(sqliteStatement, index) else {
             return nil
         }
         let length = Int(sqlite3_column_bytes(sqliteStatement, index)) // avoid an strlen
-        let optionalComponents = cString.withMemoryRebound(
+        let components = cString.withMemoryRebound(
             to: Int8.self,
             capacity: length + 1 /* trailing \0 */) { cString in
             SQLiteDateParser().components(cString: cString, length: length)
         }
-        guard let components = optionalComponents else {
+        guard let components else {
             return nil
         }
-        self.dateComponents = components.dateComponents
-        self.format = components.format
+        self.init(components.dateComponents, format: components.format)
     }
     
     // MARK: - DatabaseValueConvertible adoption

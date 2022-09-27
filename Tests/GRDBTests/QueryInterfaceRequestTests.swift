@@ -26,7 +26,7 @@ class QueryInterfaceRequestTests: GRDBTestCase {
         }
     }
     
-    override func setup(_ dbWriter: DatabaseWriter) throws {
+    override func setup(_ dbWriter: some DatabaseWriter) throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("createReaders") { db in
             try db.execute(sql: """
@@ -204,7 +204,7 @@ class QueryInterfaceRequestTests: GRDBTestCase {
                 XCTAssertEqual(rows[1][0] as String, "O'Brien")
                 XCTAssertEqual(rows[1][1] as Int64, 1)
             }
-            try test(tableRequest.select(literal: SQLLiteral(sql: ":name, id - :value", arguments: ["name": "O'Brien", "value": 1])))
+            try test(tableRequest.select(literal: SQL(sql: ":name, id - :value", arguments: ["name": "O'Brien", "value": 1])))
             // Interpolation
             try test(tableRequest.select(literal: "\("O'Brien"), id - \(1)"))
         }
@@ -346,14 +346,14 @@ class QueryInterfaceRequestTests: GRDBTestCase {
                             .fetchOne(db)!
                         XCTAssertEqual(value, "Arthur")
                     }
-                    // SQLLiteral
+                    // `SQL` literal
                     do {
                         let value = try Reader
-                            .select(literal: SQLLiteral(sql: "? AS name", arguments: ["O'Brien"]), as: String.self)
+                            .select(literal: SQL(sql: "? AS name", arguments: ["O'Brien"]), as: String.self)
                             .fetchOne(db)!
                         XCTAssertEqual(value, "O'Brien")
                     }
-                    // SQLLiteral with interpolation
+                    // `SQL` literal with interpolation
                     do {
                         let value = try Reader
                             .select(literal: "\("O'Brien") AS name", as: String.self)
@@ -386,15 +386,15 @@ class QueryInterfaceRequestTests: GRDBTestCase {
                             .fetchOne(db)!
                         XCTAssertEqual(value, "Arthur")
                     }
-                    // SQLLiteral
+                    // `SQL` literal
                     do {
                         let value = try Reader
                             .all()
-                            .select(literal: SQLLiteral(sql: "? AS name", arguments: ["O'Brien"]), as: String.self)
+                            .select(literal: SQL(sql: "? AS name", arguments: ["O'Brien"]), as: String.self)
                             .fetchOne(db)!
                         XCTAssertEqual(value, "O'Brien")
                     }
-                    // SQLLiteral with interpolation
+                    // `SQL` literal with interpolation
                     do {
                         let value = try Reader
                             .all()
@@ -431,14 +431,14 @@ class QueryInterfaceRequestTests: GRDBTestCase {
                             .fetchOne(db)!
                         XCTAssertEqual(value, ["name": "Arthur", "age": 42])
                     }
-                    // SQLLiteral with named argument
+                    // `SQL` literal with named argument
                     do {
                         let value = try Reader
-                            .select(literal: SQLLiteral(sql: "name, :age AS age", arguments: ["age": 22]), as: Row.self)
+                            .select(literal: SQL(sql: "name, :age AS age", arguments: ["age": 22]), as: Row.self)
                             .fetchOne(db)!
                         XCTAssertEqual(value, ["name": "Arthur", "age": 22])
                     }
-                    // SQLLiteral with interpolation
+                    // `SQL` literal with interpolation
                     do {
                         let value = try Reader
                             .select(literal: "\("O'Brien") AS name, \(22) AS age", as: Row.self)
@@ -471,15 +471,15 @@ class QueryInterfaceRequestTests: GRDBTestCase {
                             .fetchOne(db)!
                         XCTAssertEqual(value, ["name": "Arthur", "age": 42])
                     }
-                    // SQLLiteral with positional argument
+                    // `SQL` literal with positional argument
                     do {
                         let value = try Reader
                             .all()
-                            .select(literal: SQLLiteral(sql: "name, ? AS age", arguments: [22]), as: Row.self)
+                            .select(literal: SQL(sql: "name, ? AS age", arguments: [22]), as: Row.self)
                             .fetchOne(db)!
                         XCTAssertEqual(value, ["name": "Arthur", "age": 22])
                     }
-                    // SQLLiteral with interpolation
+                    // `SQL` literal with interpolation
                     do {
                         let value = try Reader
                             .all()
@@ -505,11 +505,11 @@ class QueryInterfaceRequestTests: GRDBTestCase {
         _ = Reader.select(Col.name) as QueryInterfaceRequest<String>
         _ = Reader.select([Col.name]) as QueryInterfaceRequest<String>
         _ = Reader.select(sql: "name") as QueryInterfaceRequest<String>
-        _ = Reader.select(literal: SQLLiteral(sql: "name")) as QueryInterfaceRequest<String>
+        _ = Reader.select(literal: SQL(sql: "name")) as QueryInterfaceRequest<String>
         _ = Reader.all().select(Col.name) as QueryInterfaceRequest<String>
         _ = Reader.all().select([Col.name]) as QueryInterfaceRequest<String>
         _ = Reader.all().select(sql: "name") as QueryInterfaceRequest<String>
-        _ = Reader.all().select(literal: SQLLiteral(sql: "name")) as QueryInterfaceRequest<String>
+        _ = Reader.all().select(literal: SQL(sql: "name")) as QueryInterfaceRequest<String>
         
         func makeRequest() -> QueryInterfaceRequest<String> {
             Reader.select(Col.name)
@@ -529,7 +529,7 @@ class QueryInterfaceRequestTests: GRDBTestCase {
             _ = request as QueryInterfaceRequest<Reader>
         }
         do {
-            let request = Reader.select(literal: SQLLiteral(sql: "name"))
+            let request = Reader.select(literal: SQL(sql: "name"))
             _ = request as QueryInterfaceRequest<Reader>
         }
         do {
@@ -545,7 +545,7 @@ class QueryInterfaceRequestTests: GRDBTestCase {
             _ = request as QueryInterfaceRequest<Reader>
         }
         do {
-            let request = Reader.all().select(literal: SQLLiteral(sql: "name"))
+            let request = Reader.all().select(literal: SQL(sql: "name"))
             _ = request as QueryInterfaceRequest<Reader>
         }
     }
@@ -976,6 +976,25 @@ class QueryInterfaceRequestTests: GRDBTestCase {
                 _ = try Row.fetchOne(db, tableRequest.select(max(Column("age")) + 1))
                 XCTAssertEqual(lastSQLQuery, "SELECT MAX(\"age\") + 1 FROM \"readers\"")
             }
+        }
+    }
+    
+    // MARK: - Exists
+    
+    func testIsEmpty() throws {
+        let dbQueue = try makeDatabaseQueue()
+        try dbQueue.write { db in
+            try XCTAssertTrue(tableRequest.isEmpty(db))
+            XCTAssertEqual(lastSQLQuery, "SELECT EXISTS (SELECT * FROM \"readers\")")
+
+            try db.execute(sql: "INSERT INTO readers (name, age) VALUES (?, ?)", arguments: ["Arthur", 42])
+            try db.execute(sql: "INSERT INTO readers (name, age) VALUES (?, ?)", arguments: ["Barbara", 36])
+            
+            try XCTAssertFalse(tableRequest.isEmpty(db))
+            XCTAssertEqual(lastSQLQuery, "SELECT EXISTS (SELECT * FROM \"readers\")")
+
+            try XCTAssertFalse(tableRequest.filter(Column("name") == "Arthur").isEmpty(db))
+            XCTAssertEqual(lastSQLQuery, "SELECT EXISTS (SELECT * FROM \"readers\" WHERE \"name\" = 'Arthur')")
         }
     }
 }

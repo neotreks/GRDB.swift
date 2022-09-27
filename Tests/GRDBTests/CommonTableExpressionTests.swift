@@ -295,21 +295,25 @@ class CommonTableExpressionTests: GRDBTestCase {
                     literal: "SELECT \("O'Brien")")
                 let assoc1 = T.association(to: cte1)
                 let assoc2 = cte1.association(to: cte2)
-                let assoc3 = cte2.association(to: T.self)
-                let request = T.all()
-                    .with(cte1)
-                    .with(cte2)
-                    .including(required: assoc1.including(required: assoc2.including(required: assoc3)))
-                try assertEqualSQL(db, request, """
-                    WITH \
-                    "cte1" AS (SELECT * FROM "t"), \
-                    "cte2" AS (SELECT 'O''Brien') \
-                    SELECT "t1".*, "cte1".*, "cte2".*, "t2".* \
-                    FROM "t" "t1" \
-                    JOIN "cte1" \
-                    JOIN "cte2" \
-                    JOIN "t" "t2"
-                    """)
+                for assoc3 in [
+                    cte2.association(to: T.self),
+                    cte2.association(to: Table("t")),
+                ] {
+                    let request = T.all()
+                        .with(cte1)
+                        .with(cte2)
+                        .including(required: assoc1.including(required: assoc2.including(required: assoc3)))
+                    try assertEqualSQL(db, request, """
+                        WITH \
+                        "cte1" AS (SELECT * FROM "t"), \
+                        "cte2" AS (SELECT 'O''Brien') \
+                        SELECT "t1".*, "cte1".*, "cte2".*, "t2".* \
+                        FROM "t" "t1" \
+                        JOIN "cte1" \
+                        JOIN "cte2" \
+                        JOIN "t" "t2"
+                        """)
+                }
             }
             
             // Use CTE as a subquery
@@ -776,6 +780,47 @@ class CommonTableExpressionTests: GRDBTestCase {
                         LEFT JOIN "player" "player2" ON "player2"."id" = "award"."playerId"
                         """)
                 }
+            }
+        }
+    }
+    
+    // https://github.com/groue/GRDB.swift/issues/1275
+    func testIssue1275() throws {
+        try makeDatabaseQueue().read { db in
+            do {
+                // Failing case: test that error message suggests to fix the cte
+                // definition by declaring columns.
+                let cte1 = CommonTableExpression(named: "cte1", sql: "SELECT * FROM cte2")
+                let cte2 = CommonTableExpression(named: "cte2", sql: "SELECT 1 AS a")
+                let association = cte1.association(to: cte2)
+                let request = cte1.all().with(cte1).with(cte2).including(required: association)
+                _ = try request.asRequest(of: Row.self).fetchOne(db)
+            } catch let error as DatabaseError {
+                XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
+                XCTAssertEqual(error.message, """
+                Can't compute the number of columns in the "cte1" common table expression: \
+                no such table: cte2. Check the syntax of the SQL definition, \
+                or provide the explicit list of selected columns with the \
+                `columns` parameter in the CommonTableExpression initializer.
+                """)
+            }
+            
+            do {
+                // Fixed case: specify columns
+                let cte1 = CommonTableExpression(named: "cte1", columns: ["a"], sql: "SELECT * FROM cte2")
+                let cte2 = CommonTableExpression(named: "cte2", sql: "SELECT 1 AS a")
+                let association = cte1.association(to: cte2)
+                let request = cte1.all().with(cte1).with(cte2).including(required: association)
+                _ = try request.asRequest(of: Row.self).fetchOne(db)
+            }
+            
+            do {
+                // Handled case: no need to specify columns
+                let cte1 = CommonTableExpression(named: "cte1", request: Table("cte2").select(Column("a")))
+                let cte2 = CommonTableExpression(named: "cte2", sql: "SELECT 1 AS a")
+                let association = cte1.association(to: cte2)
+                let request = cte1.all().with(cte1).with(cte2).including(required: association)
+                _ = try request.asRequest(of: Row.self).fetchOne(db)
             }
         }
     }

@@ -6,7 +6,7 @@ private class NonDatabaseConvertibleObject: NSObject
 
 class StatementArgumentsFoundationTests: GRDBTestCase {
 
-    override func setup(_ dbWriter: DatabaseWriter) throws {
+    override func setup(_ dbWriter: some DatabaseWriter) throws {
         var migrator = DatabaseMigrator()
         migrator.registerMigration("createPersons") { db in
             try db.execute(sql: """
@@ -25,7 +25,7 @@ class StatementArgumentsFoundationTests: GRDBTestCase {
         
         try dbQueue.inTransaction { db in
             
-            let statement = try db.makeUpdateStatement(sql: "INSERT INTO persons (name, age) VALUES (?, ?)")
+            let statement = try db.makeStatement(sql: "INSERT INTO persons (name, age) VALUES (?, ?)")
             let persons: [[Any]] = [
                 ["Arthur", 41],
                 ["Barbara", 38],
@@ -63,7 +63,7 @@ class StatementArgumentsFoundationTests: GRDBTestCase {
         
         try dbQueue.inTransaction { db in
             
-            let statement = try db.makeUpdateStatement(sql: "INSERT INTO persons (name, age) VALUES (:name, :age)")
+            let statement = try db.makeStatement(sql: "INSERT INTO persons (name, age) VALUES (:name, :age)")
             let persons: [[AnyHashable: Any]] = [
                 ["name": "Arthur", "age": 41],
                 ["name": "Barbara", "age": 38],

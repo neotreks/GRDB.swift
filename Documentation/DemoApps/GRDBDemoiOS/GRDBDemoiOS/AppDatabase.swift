@@ -3,10 +3,10 @@ import GRDB
 /// AppDatabase lets the application access the database.
 ///
 /// It applies the pratices recommended at
-/// https://github.com/groue/GRDB.swift/blob/master/Documentation/GoodPracticesForDesigningRecordTypes.md
+/// <https://github.com/groue/GRDB.swift/blob/master/Documentation/GoodPracticesForDesigningRecordTypes.md>
 final class AppDatabase {
     /// Creates an `AppDatabase`, and make sure the database schema is ready.
-    init(_ dbWriter: DatabaseWriter) throws {
+    init(_ dbWriter: any DatabaseWriter) throws {
         self.dbWriter = dbWriter
         try migrator.migrate(dbWriter)
     }
@@ -16,12 +16,12 @@ final class AppDatabase {
     /// Application can use a `DatabasePool`, and tests can use a fast
     /// in-memory `DatabaseQueue`.
     ///
-    /// See https://github.com/groue/GRDB.swift/blob/master/README.md#database-connections
-    private let dbWriter: DatabaseWriter
+    /// See <https://github.com/groue/GRDB.swift/blob/master/README.md#database-connections>
+    private let dbWriter: any DatabaseWriter
     
     /// The DatabaseMigrator that defines the database schema.
     ///
-    /// See https://github.com/groue/GRDB.swift/blob/master/Documentation/Migrations.md
+    /// See <https://github.com/groue/GRDB.swift/blob/master/Documentation/Migrations.md>
     private var migrator: DatabaseMigrator {
         var migrator = DatabaseMigrator()
         
@@ -64,7 +64,7 @@ extension AppDatabase {
     /// Delete the specified players
     func deletePlayers(ids: [Int64]) throws {
         try dbWriter.write { db in
-            _ = try Player.deleteAll(db, keys: ids)
+            _ = try Player.deleteAll(db, ids: ids)
         }
     }
     
@@ -78,14 +78,13 @@ extension AppDatabase {
     /// Refresh all players (by performing some random changes, for demo purpose).
     func refreshPlayers() throws {
         try dbWriter.write { db in
-            if try Player.fetchCount(db) == 0 {
+            if try Player.all().isEmpty(db) {
                 // When database is empty, insert new random players
                 try createRandomPlayers(db)
             } else {
                 // Insert a player
                 if Bool.random() {
-                    var player = Player.newRandom()
-                    try player.insert(db)
+                    _ = try Player.makeRandom().inserted(db) // insert but ignore inserted id
                 }
                 
                 // Delete a random player
@@ -106,7 +105,7 @@ extension AppDatabase {
     /// Create random players if the database is empty.
     func createRandomPlayersIfEmpty() throws {
         try dbWriter.write { db in
-            if try Player.fetchCount(db) == 0 {
+            if try Player.all().isEmpty(db) {
                 try createRandomPlayers(db)
             }
         }
@@ -115,40 +114,20 @@ extension AppDatabase {
     /// Support for `createRandomPlayersIfEmpty()` and `refreshPlayers()`.
     private func createRandomPlayers(_ db: Database) throws {
         for _ in 0..<8 {
-            var player = Player.newRandom()
-            try player.insert(db)
+            _ = try Player.makeRandom().inserted(db) // insert but ignore inserted id
         }
     }
 }
 
 // MARK: - Database Access: Reads
 
+// This demo app does not provide any specific reading method, and instead
+// gives an unrestricted read-only access to the rest of the application.
+// In your app, you are free to choose another path, and define focused
+// reading methods.
 extension AppDatabase {
-    /// Tracks changes in players ordered by name
-    func observePlayersOrderedByName(
-        onError: @escaping (Error) -> Void,
-        onChange: @escaping ([Player]) -> Void)
-    -> DatabaseCancellable
-    {
-        ValueObservation
-            .tracking(Player.all().orderedByName().fetchAll)
-            .start(
-                in: dbWriter,
-                onError: onError,
-                onChange: onChange)
-    }
-    
-    /// Tracks changes in players ordered by score
-    func observePlayersOrderedByScore(
-        onError: @escaping (Error) -> Void,
-        onChange: @escaping ([Player]) -> Void)
-    -> DatabaseCancellable
-    {
-        ValueObservation
-            .tracking(Player.all().orderedByScore().fetchAll)
-            .start(
-                in: dbWriter,
-                onError: onError,
-                onChange: onChange)
+    /// Provides a read-only access to the database
+    var databaseReader: DatabaseReader {
+        dbWriter
     }
 }

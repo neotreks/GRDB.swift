@@ -1,7 +1,7 @@
 Sharing a Database
 ==================
 
-This chapter describes a recommended setup that applies as soon as several processes want to access a same SQLite database.
+**This guide describes a recommended setup that applies as soon as several processes want to access the same SQLite database.** It complements the [Concurrency](Concurrency.md) guide, that you should read first.
 
 On iOS for example, you can share database files between multiple processes by storing them in an [App Group Container](https://developer.apple.com/documentation/foundation/nsfilemanager/1412643-containerurlforsecurityapplicati). On macOS as well, several processes may want to open the same database, according to their particular sandboxing contexts.
 
@@ -152,7 +152,6 @@ If several processes want to write in the database, configure the database pool 
 ```swift
 var configuration = Configuration()
 configuration.busyMode = .timeout(/* a TimeInterval */)
-configuration.defaultTransactionKind = .immediate
 let dbPool = try DatabasePool(path: ..., configuration: configuration)
 ```
 
@@ -161,7 +160,7 @@ With such a setup, you may still get `SQLITE_BUSY` (5, "database is locked") err
 ```swift
 do {
     try dbPool.write { db in ... }
-} catch let error as DatabaseError where error.resultCode == .SQLITE_BUSY {
+} catch DatabaseError.SQLITE_BUSY {
     // Another process won't let you write. Deal with it.
 }
 ```
@@ -173,9 +172,9 @@ do {
 
 > The exception code 0xDEAD10CC indicates that an application has been terminated by the OS because it held on to a file lock or sqlite database lock during suspension.
 
-See https://developer.apple.com/library/archive/technotes/tn2151/_index.html for more information about this exception.
+See https://developer.apple.com/documentation/xcode/understanding-the-exception-types-in-a-crash-report for more information about this exception.
 
-1. If you use SQLCipher, use SQLCipher 4+, and call the `cipher_plaintext_header_size` pragma from your database preparation function:
+1. If you use SQLCipher, use SQLCipher 4+, and call the [`cipher_plaintext_header_size` pragma](https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_plaintext_header_size) from your database preparation function:
     
     ```swift
     var configuration = Configuration()
@@ -186,7 +185,13 @@ See https://developer.apple.com/library/archive/technotes/tn2151/_index.html for
     let dbPool = try DatabasePool(path: ..., configuration: configuration)
     ```
     
-    This will avoid https://github.com/sqlcipher/sqlcipher/issues/255.
+    This will avoid this issue: https://github.com/sqlcipher/sqlcipher/issues/255.
+    
+    This will also disable a SQLCipher security feature: the salt. As described by https://www.zetetic.net/sqlcipher/design/:
+    
+    > The salt is used for key derivation and it ensures that even if two databases are created using the same password, they will not have the same encryption key.
+    
+    Applications are responsible for managing the salt themselves and providing it to SQLCipher. See https://www.zetetic.net/sqlcipher/sqlcipher-api/#cipher_plaintext_header_size for instructions.
 
 2. [**:fire: EXPERIMENTAL**](../README.md#what-are-experimental-features) In each process that wants to write in the database:
 
@@ -245,7 +250,7 @@ See https://developer.apple.com/library/archive/technotes/tn2151/_index.html for
     ```swift
     do {
         try dbPool.write { db in ... }
-    } catch let error as DatabaseError where error.isInterruptionError {
+    } catch DatabaseError.SQLITE_INTERRUPT, DatabaseError.SQLITE_ABORT {
         // Oops, the database is suspended.
         // Maybe try again after database is resumed?
     }

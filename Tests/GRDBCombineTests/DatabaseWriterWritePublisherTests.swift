@@ -31,20 +31,19 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             try XCTAssertEqual(writer.read(Player.fetchCount), 0)
             let publisher = writer.writePublisher(updates: { db in
                 try Player(id: 1, name: "Arthur", score: 1000).insert(db)
             })
             let recorder = publisher.record()
-            try wait(for: recorder.single, timeout: 1)
+            try wait(for: recorder.single, timeout: 5)
             try XCTAssertEqual(writer.read(Player.fetchCount), 1)
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -59,20 +58,19 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer.writePublisher(updates: { db -> Int in
                 try Player(id: 1, name: "Arthur", score: 1000).insert(db)
                 return try Player.fetchCount(db)
             })
             let recorder = publisher.record()
-            let count = try wait(for: recorder.single, timeout: 1)
+            let count = try wait(for: recorder.single, timeout: 5)
             XCTAssertEqual(count, 1)
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -82,12 +80,12 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             throw XCTSkip("Combine is not available")
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer.writePublisher(updates: { db in
                 try db.execute(sql: "THIS IS NOT SQL")
             })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
@@ -95,10 +93,9 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             }
         }
         
-        try Test(test)
-            .run { DatabaseQueue() }
-            .runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
+        try Test(test).run { try DatabaseQueue() }
+        try Test(test).runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
     }
     
     func testWritePublisherErrorRollbacksTransaction() throws {
@@ -111,13 +108,13 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer.writePublisher(updates: { db in
                 try Player(id: 1, name: "Arthur", score: 1000).insert(db)
                 try db.execute(sql: "THIS IS NOT SQL")
             })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
@@ -127,10 +124,9 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             XCTAssertEqual(count, 0)
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -145,7 +141,7 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let expectation = self.expectation(description: "")
             let semaphore = DispatchSemaphore(value: 0)
             let cancellable = writer
@@ -160,14 +156,13 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
                 })
             
             semaphore.signal()
-            waitForExpectations(timeout: 1, handler: nil)
+            waitForExpectations(timeout: 5, handler: nil)
             cancellable.cancel()
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -182,7 +177,7 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) {
+        func test<Writer: DatabaseWriter>(writer: Writer) {
             let expectation = self.expectation(description: "")
             expectation.expectedFulfillmentCount = 2 // value + completion
             let cancellable = writer
@@ -199,14 +194,13 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
                         expectation.fulfill()
                 })
             
-            waitForExpectations(timeout: 1, handler: nil)
+            waitForExpectations(timeout: 5, handler: nil)
             cancellable.cancel()
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -221,7 +215,7 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) {
+        func test<Writer: DatabaseWriter>(writer: Writer) {
             let queue = DispatchQueue(label: "test")
             let expectation = self.expectation(description: "")
             expectation.expectedFulfillmentCount = 2 // value + completion
@@ -239,14 +233,13 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
                         expectation.fulfill()
                 })
             
-            waitForExpectations(timeout: 1, handler: nil)
+            waitForExpectations(timeout: 5, handler: nil)
             cancellable.cancel()
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -263,20 +256,19 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer
                 .writePublisher(
                     updates: { db in try Player(id: 1, name: "Arthur", score: 1000).insert(db) },
                     thenRead: { db, _ in try Player.fetchCount(db) })
             let recorder = publisher.record()
-            let count = try wait(for: recorder.single, timeout: 1)
+            let count = try wait(for: recorder.single, timeout: 5)
             XCTAssertEqual(count, 1)
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -286,23 +278,22 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             throw XCTSkip("Combine is not available")
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer
                 .writePublisher(
                     updates: { _ in },
                     thenRead: { db, _ in try Player.createTable(db) })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_READONLY)
             }
         }
         
-        try Test(test)
-            .run { DatabaseQueue() }
-            .runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
+        try Test(test).run { try DatabaseQueue() }
+        try Test(test).runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
     }
     
     // MARK: -
@@ -312,12 +303,12 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             throw XCTSkip("Combine is not available")
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer.writePublisher(
                 updates: { db in try db.execute(sql: "THIS IS NOT SQL") },
                 thenRead: { _, _ in XCTFail("Should not read") })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
@@ -325,10 +316,9 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             }
         }
         
-        try Test(test)
-            .run { DatabaseQueue() }
-            .runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
+        try Test(test).run { try DatabaseQueue() }
+        try Test(test).runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
     }
     
     func testWriteThenReadPublisherWriteErrorRollbacksTransaction() throws {
@@ -341,7 +331,7 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             return writer
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer.writePublisher(
                 updates: { db in
                     try Player(id: 1, name: "Arthur", score: 1000).insert(db)
@@ -349,7 +339,7 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             },
                 thenRead: { _, _ in XCTFail("Should not read") })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
@@ -359,10 +349,9 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             XCTAssertEqual(count, 0)
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
     
     // MARK: -
@@ -374,12 +363,12 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             throw XCTSkip("Combine is not available")
         }
         
-        func test(writer: DatabaseWriter) throws {
+        func test(writer: some DatabaseWriter) throws {
             let publisher = writer.writePublisher(
                 updates: { _ in },
                 thenRead: { db, _ in try Row.fetchAll(db, sql: "THIS IS NOT SQL") })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
@@ -387,16 +376,15 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             }
         }
         
-        try Test(test)
-            .run { DatabaseQueue() }
-            .runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
+        try Test(test).run { try DatabaseQueue() }
+        try Test(test).runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
     }
     
     // MARK: - Regression tests
     
     // Regression test against deadlocks created by concurrent completion
-    // and cancellations trigerred by .switchToLatest().prefix(1)
+    // and cancellations triggered by .switchToLatest().prefix(1)
     func testDeadlockPrevention() throws {
         guard #available(OSX 10.15, iOS 13, tvOS 13, watchOS 6, *) else {
             throw XCTSkip("Combine is not available")
@@ -411,24 +399,23 @@ class DatabaseWriterWritePublisherTests : XCTestCase {
             // print(iteration)
             let scoreSubject = PassthroughSubject<Int, Error>()
             let publisher = scoreSubject
-                .map({ score in
+                .map { score in
                     writer.writePublisher { db -> Int in
                         try Player(id: 1, name: "Arthur", score: score).insert(db)
                         return try Player.fetchCount(db)
                     }
-                })
+                }
                 .switchToLatest()
                 .prefix(1)
             let recorder = publisher.record()
             scoreSubject.send(0)
-            let count = try wait(for: recorder.single, timeout: 1)
+            let count = try wait(for: recorder.single, timeout: 5)
             XCTAssertEqual(count, 1)
         }
         
-        try Test(repeatCount: 100, test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(repeatCount: 100, test).run { try setUp(DatabaseQueue()) }
+        try Test(repeatCount: 100, test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(repeatCount: 100, test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
     }
 }
 #endif

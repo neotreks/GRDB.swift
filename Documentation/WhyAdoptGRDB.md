@@ -240,7 +240,7 @@ let maximumScore: Int? = try Int.fetchOne(db, sql: """
     """)
 ```
 
-With Swift 5, you can profit from **SQL interpolation**. It lets you build SQL queries from natural looking strings, but without any risk of syntax error or [SQL injection](https://xkcd.com/327/):
+[SQL interpolation] lets you build SQL queries from natural looking strings, but without any risk of syntax error or [SQL injection](https://xkcd.com/327/):
 
 ```swift
 try db.execute(literal: "UPDATE player SET score = \(score) WHERE id = \(id)")
@@ -283,11 +283,9 @@ while let row = try rows.next() {
 
 If this little tour of GRDB has convinced you, the real trip starts here: [GRDB].
 
-And if you happen to maintain an Objective-C application that uses FMDB, checkout [GRDBObjc]. It provides FMDB-compatible bindings to GRDB, so that you can inject sweet drops of Swift into your app, at your own pace, and at minimal cost.
-
 Happy GRDB! :gift:
 
-[Concurrency Guide]: ../README.md#concurrency
+[Concurrency Guide]: Concurrency.md
 [Core Data]: https://developer.apple.com/documentation/coredata
 [DatabasePool]: ../README.md#database-pools
 [Diesel]: http://diesel.rs
@@ -296,7 +294,6 @@ Happy GRDB! :gift:
 [Fluent]: https://github.com/vapor/fluent
 [FMDB]: http://github.com/ccgus/fmdb
 [GRDB]: http://github.com/groue/GRDB.swift
-[GRDBObjc]: http://github.com/groue/GRDBObjc
 [PersistableRecord]: ../README.md#records
 [Realm]: http://realm.io
 [FetchableRecord]: ../README.md#records
@@ -309,3 +306,4 @@ Happy GRDB! :gift:
 [associations]: AssociationsBasics.md
 [Codable records]: ../README.md#codable-records
 [records]: ../README.md#records
+[SQL interpolation]: SQLInterpolation.md

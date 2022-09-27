@@ -8,7 +8,7 @@
 # make distclean - Restore repository to a pristine state
 
 default: test
-smokeTest: test_framework_GRDBiOS_maxTarget test_framework_GRDBiOS_minTarget test_framework_SQLCipher4 test_framework_GRDBCustomSQLiteiOS_maxTarget test_SPM
+smokeTest: test_framework_GRDBiOS_maxTarget test_framework_GRDBiOS_minTarget test_framework_SQLCipher4Encrypted test_framework_GRDBCustomSQLiteiOS_maxTarget test_SPM
 
 # Requirements
 # ============
@@ -50,57 +50,17 @@ TEST_ACTIONS = clean build build-for-testing test-without-building
 
 # When adding support for an Xcode version, look for available devices with
 # `xcrun xctrace list devices` (or the deprecated `instruments -s devices`).
-ifeq ($(XCODEVERSION),12.4)
-  MAX_SWIFT_VERSION = 5.3
-  MIN_SWIFT_VERSION = 5.2
-  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 12,OS=14.4"
-  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 5s,OS=11.4"
-  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV 4K,OS=14.3"
-  MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=11.4"
-else ifeq ($(XCODEVERSION),12.3)
-  MAX_SWIFT_VERSION = 5.3
-  MIN_SWIFT_VERSION = 5.2
-  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 12,OS=14.3"
-  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 5s,OS=10.3.1"
-  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV 4K,OS=14.3"
-  MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=10.2"
-else ifeq ($(XCODEVERSION),12.2)
-  MAX_SWIFT_VERSION = 5.3
-  MIN_SWIFT_VERSION = 5.2
-  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 12,OS=14.2"
-  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 5s,OS=10.3.1"
-  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV 4K,OS=14.2"
-  MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=10.2"
-else ifeq ($(XCODEVERSION),12.0)
-  MAX_SWIFT_VERSION = 5.3
-  MIN_SWIFT_VERSION = 5.2
-  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 11,OS=14.0"
-  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 5s,OS=10.3.1"
-  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV 4K,OS=14.0"
-  MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=10.2"
-else ifeq ($(XCODEVERSION),11.6)
-  MAX_SWIFT_VERSION = 5.2
+ifeq ($(XCODEVERSION),14.0)
+  MAX_SWIFT_VERSION = 5.7
   MIN_SWIFT_VERSION = # MAX_SWIFT_VERSION is the minimum supported Swift version
-  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 11,OS=13.6"
-  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 5s,OS=10.3.1"
-  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV 4K,OS=13.4"
-  MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=10.2"
-else ifeq ($(XCODEVERSION),11.5)
-  MAX_SWIFT_VERSION = 5.2
-  MIN_SWIFT_VERSION = # MAX_SWIFT_VERSION is the minimum supported Swift version
-  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 11,OS=13.5"
-  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 5s,OS=10.3.1"
-  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV 4K,OS=13.4"
-  MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=10.2"
-else ifeq ($(XCODEVERSION),11.4)
-  MAX_SWIFT_VERSION = 5.2
-  MIN_SWIFT_VERSION = # MAX_SWIFT_VERSION is the minimum supported Swift version
-  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 11,OS=13.4.1"
-  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 5s,OS=10.3.1"
-  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV 4K,OS=13.4"
-  MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=10.2"
+  MAX_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 13,OS=16.0"
+  MIN_IOS_DESTINATION = "platform=iOS Simulator,name=iPhone 8,OS=12.4"
+  MAX_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=16.0"
+  #MIN_TVOS_DESTINATION = "platform=tvOS Simulator,name=Apple TV,OS=11.4" TODO: restore
+  OTHER_SWIFT_FLAGS = '$$(inherited) -D SQLITE_ENABLE_FTS5 -D SQLITE_ENABLE_PREUPDATE_HOOK' # -Xfrontend -warn-concurrency -Xfrontend -enable-actor-data-race-checks'
+  GCC_PREPROCESSOR_DEFINITIONS = '$$(inherited) GRDB_SQLITE_ENABLE_PREUPDATE_HOOK=1'
 else
-  # Swift 5.2 required: Xcode < 11.4 is not supported
+  # Swift 5.3 required: Xcode < 12.0 is not supported
 endif
 
 # If xcpretty is available, use it for xcodebuild output
@@ -133,45 +93,45 @@ else
 endif
 
 # We test framework test suites, and if GRBD can be installed in an application:
-test: test_framework test_install
+test: test_framework test_archive test_install test_demo_apps
 
 test_framework: test_framework_darwin
 test_framework_darwin: test_framework_GRDB test_framework_GRDBCustom test_framework_SQLCipher test_SPM
 test_framework_GRDB: test_framework_GRDBOSX test_framework_GRDBWatchOS test_framework_GRDBiOS test_framework_GRDBtvOS
 test_framework_GRDBCustom: test_framework_GRDBCustomSQLiteOSX test_framework_GRDBCustomSQLiteiOS
-test_framework_SQLCipher: test_framework_SQLCipher3 test_framework_SQLCipher4
+test_framework_SQLCipher: test_framework_SQLCipher3 test_framework_SQLCipher3Encrypted test_framework_SQLCipher4 test_framework_SQLCipher4Encrypted
+test_archive: test_archive_GRDBOSX_xcframework
 test_install: test_install_manual test_install_SPM test_install_customSQLite test_install_GRDB_CocoaPods test_CocoaPodsLint
 test_CocoaPodsLint: test_CocoaPodsLint_GRDB
+test_demo_apps: test_GRDBDemoiOS test_GRDBCombineDemo test_GRDBAsyncDemo
 
 test_framework_GRDBOSX: test_framework_GRDBOSX_maxSwift test_framework_GRDBOSX_minSwift
 
 test_framework_GRDBOSX_maxSwift:
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBOSX \
+	  -scheme GRDB \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  'OTHER_SWIFT_FLAGS=$(inherited) -D SQLITE_ENABLE_FTS5 -D SQLITE_ENABLE_PREUPDATE_HOOK' \
-	  'GCC_PREPROCESSOR_DEFINITIONS=$(inherited) GRDB_SQLITE_ENABLE_PREUPDATE_HOOK=1' \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  OTHER_SWIFT_FLAGS=$(OTHER_SWIFT_FLAGS) \
+	  GCC_PREPROCESSOR_DEFINITIONS=$(GCC_PREPROCESSOR_DEFINITIONS) \
+	  $(TEST_ACTIONS)
 
 test_framework_GRDBOSX_minSwift:
 ifdef MIN_SWIFT_VERSION
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBOSX \
+	  -scheme GRDB \
 	  SWIFT_VERSION=$(MIN_SWIFT_VERSION) \
-	  'OTHER_SWIFT_FLAGS=$(inherited) -D SQLITE_ENABLE_FTS5 -D SQLITE_ENABLE_PREUPDATE_HOOK' \
-	  'GCC_PREPROCESSOR_DEFINITIONS=$(inherited) GRDB_SQLITE_ENABLE_PREUPDATE_HOOK=1' \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  OTHER_SWIFT_FLAGS=$(OTHER_SWIFT_FLAGS) \
+	  GCC_PREPROCESSOR_DEFINITIONS=$(GCC_PREPROCESSOR_DEFINITIONS) \
+	  $(TEST_ACTIONS)
 endif
 
 test_framework_GRDBWatchOS:
 	# XCTest is not supported for watchOS: we only make sure that the framework builds.
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBWatchOS \
+	  -scheme GRDB \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
 	  clean build \
 	  $(XCPRETTY)
@@ -182,35 +142,32 @@ test_framework_GRDBiOS_maxTarget: test_framework_GRDBiOS_maxTarget_maxSwift test
 test_framework_GRDBiOS_maxTarget_maxSwift:
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBiOS \
+	  -scheme GRDB \
 	  -destination $(MAX_IOS_DESTINATION) \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  'OTHER_SWIFT_FLAGS=$(inherited) -D SQLITE_ENABLE_FTS5 -D SQLITE_ENABLE_PREUPDATE_HOOK' \
-	  'GCC_PREPROCESSOR_DEFINITIONS=$(inherited) GRDB_SQLITE_ENABLE_PREUPDATE_HOOK=1' \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  OTHER_SWIFT_FLAGS=$(OTHER_SWIFT_FLAGS) \
+	  GCC_PREPROCESSOR_DEFINITIONS=$(GCC_PREPROCESSOR_DEFINITIONS) \
+	  $(TEST_ACTIONS)
 
 test_framework_GRDBiOS_maxTarget_minSwift:
 ifdef MIN_SWIFT_VERSION
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBiOS \
+	  -scheme GRDB \
 	  -destination $(MAX_IOS_DESTINATION) \
 	  SWIFT_VERSION=$(MIN_SWIFT_VERSION) \
-	  'OTHER_SWIFT_FLAGS=$(inherited) -D SQLITE_ENABLE_FTS5 -D SQLITE_ENABLE_PREUPDATE_HOOK' \
-	  'GCC_PREPROCESSOR_DEFINITIONS=$(inherited) GRDB_SQLITE_ENABLE_PREUPDATE_HOOK=1' \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  OTHER_SWIFT_FLAGS=$(OTHER_SWIFT_FLAGS) \
+	  GCC_PREPROCESSOR_DEFINITIONS=$(GCC_PREPROCESSOR_DEFINITIONS) \
+	  $(TEST_ACTIONS)
 endif
 
 test_framework_GRDBiOS_minTarget:
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBiOS \
+	  -scheme GRDB \
 	  -destination $(MIN_IOS_DESTINATION) \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  $(TEST_ACTIONS)
 
 test_framework_GRDBtvOS: test_framework_GRDBtvOS_maxTarget test_framework_GRDBtvOS_minTarget
 test_framework_GRDBtvOS_maxTarget: test_framework_GRDBtvOS_maxTarget_maxSwift test_framework_GRDBtvOS_maxTarget_minSwift
@@ -218,43 +175,41 @@ test_framework_GRDBtvOS_maxTarget: test_framework_GRDBtvOS_maxTarget_maxSwift te
 test_framework_GRDBtvOS_maxTarget_maxSwift:
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBtvOS \
+	  -scheme GRDB \
 	  -destination $(MAX_TVOS_DESTINATION) \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  'OTHER_SWIFT_FLAGS=$(inherited) -D SQLITE_ENABLE_FTS5 -D SQLITE_ENABLE_PREUPDATE_HOOK' \
-	  'GCC_PREPROCESSOR_DEFINITIONS=$(inherited) GRDB_SQLITE_ENABLE_PREUPDATE_HOOK=1' \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  OTHER_SWIFT_FLAGS=$(OTHER_SWIFT_FLAGS) \
+	  GCC_PREPROCESSOR_DEFINITIONS=$(GCC_PREPROCESSOR_DEFINITIONS) \
+	  $(TEST_ACTIONS)
 
 test_framework_GRDBtvOS_maxTarget_minSwift:
 ifdef MIN_SWIFT_VERSION
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBtvOS \
+	  -scheme GRDB \
 	  -destination $(MAX_TVOS_DESTINATION) \
 	  SWIFT_VERSION=$(MIN_SWIFT_VERSION) \
-	  'OTHER_SWIFT_FLAGS=$(inherited) -D SQLITE_ENABLE_FTS5 -D SQLITE_ENABLE_PREUPDATE_HOOK' \
-	  'GCC_PREPROCESSOR_DEFINITIONS=$(inherited) GRDB_SQLITE_ENABLE_PREUPDATE_HOOK=1' \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  OTHER_SWIFT_FLAGS=$(OTHER_SWIFT_FLAGS) \
+	  GCC_PREPROCESSOR_DEFINITIONS=$(GCC_PREPROCESSOR_DEFINITIONS) \
+	  $(TEST_ACTIONS)
 endif
 
 test_framework_GRDBtvOS_minTarget:
+ifdef MIN_TVOS_DESTINATION
 	$(XCODEBUILD) \
 	  -project GRDB.xcodeproj \
-	  -scheme GRDBtvOS \
+	  -scheme GRDB \
 	  -destination $(MIN_TVOS_DESTINATION) \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  $(TEST_ACTIONS)
+endif
 
 test_framework_GRDBCustomSQLiteOSX: SQLiteCustom
 	$(XCODEBUILD) \
 	  -project GRDBCustom.xcodeproj \
-	  -scheme GRDBOSX \
+	  -scheme GRDBCustom \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  $(TEST_ACTIONS)
 
 test_framework_GRDBCustomSQLiteiOS: test_framework_GRDBCustomSQLiteiOS_maxTarget test_framework_GRDBCustomSQLiteiOS_minTarget
 test_framework_GRDBCustomSQLiteiOS_maxTarget: test_framework_GRDBCustomSQLiteiOS_maxTarget_maxSwift test_framework_GRDBCustomSQLiteiOS_maxTarget_minSwift
@@ -262,31 +217,28 @@ test_framework_GRDBCustomSQLiteiOS_maxTarget: test_framework_GRDBCustomSQLiteiOS
 test_framework_GRDBCustomSQLiteiOS_maxTarget_maxSwift: SQLiteCustom
 	$(XCODEBUILD) \
 	  -project GRDBCustom.xcodeproj \
-	  -scheme GRDBiOS \
+	  -scheme GRDBCustom \
 	  -destination $(MAX_IOS_DESTINATION) \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  $(TEST_ACTIONS)
 
 test_framework_GRDBCustomSQLiteiOS_maxTarget_minSwift: SQLiteCustom
 ifdef MIN_SWIFT_VERSION
 	$(XCODEBUILD) \
 	  -project GRDBCustom.xcodeproj \
-	  -scheme GRDBiOS \
+	  -scheme GRDBCustom \
 	  -destination $(MAX_IOS_DESTINATION) \
 	  SWIFT_VERSION=$(MIN_SWIFT_VERSION) \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  $(TEST_ACTIONS)
 endif
 
 test_framework_GRDBCustomSQLiteiOS_minTarget: SQLiteCustom
 	$(XCODEBUILD) \
 	  -project GRDBCustom.xcodeproj \
-	  -scheme GRDBiOS \
+	  -scheme GRDBCustom \
 	  -destination $(MIN_IOS_DESTINATION) \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  $(TEST_ACTIONS) \
-	  $(XCPRETTY)
+	  $(TEST_ACTIONS)
 
 test_framework_SQLCipher3:
 ifdef POD
@@ -296,10 +248,23 @@ ifdef POD
 	  -workspace GRDBTests.xcworkspace \
 	  -scheme GRDBTests \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  build-for-testing test-without-building \
-	  $(XCPRETTY)
+	  build-for-testing test-without-building
 else
 	@echo CocoaPods must be installed for test_framework_SQLCipher3
+	@exit 1
+endif
+
+test_framework_SQLCipher3Encrypted:
+ifdef POD
+	cd Tests/CocoaPods/SQLCipher3 && \
+	$(POD) install && \
+	$(XCODEBUILD) \
+	  -workspace GRDBTests.xcworkspace \
+	  -scheme GRDBEncryptedTests \
+	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
+	  build-for-testing test-without-building
+else
+	@echo CocoaPods must be installed for test_framework_SQLCipher3Encrypted
 	@exit 1
 endif
 
@@ -311,10 +276,23 @@ ifdef POD
 	  -workspace GRDBTests.xcworkspace \
 	  -scheme GRDBTests \
 	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
-	  build-for-testing test-without-building \
-	  $(XCPRETTY)
+	  build-for-testing test-without-building
 else
 	@echo CocoaPods must be installed for test_framework_SQLCipher4
+	@exit 1
+endif
+
+test_framework_SQLCipher4Encrypted:
+ifdef POD
+	cd Tests/CocoaPods/SQLCipher4 && \
+	$(POD) install && \
+	$(XCODEBUILD) \
+	  -workspace GRDBTests.xcworkspace \
+	  -scheme GRDBEncryptedTests \
+	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
+	  build-for-testing test-without-building
+else
+	@echo CocoaPods must be installed for test_framework_SQLCipher4Encrypted
 	@exit 1
 endif
 
@@ -323,7 +301,25 @@ test_SPM:
 	$(SWIFT) package clean
 	$(SWIFT) build
 	$(SWIFT) build -c release
-	set -o pipefail && $(SWIFT) test $(XCPRETTY)
+	set -o pipefail && $(SWIFT) test --parallel
+
+test_archive_GRDBOSX_xcframework:
+	rm -rf Tests/products
+	mkdir Tests/products
+	$(XCODEBUILD) archive \
+	  -project GRDB.xcodeproj \
+	  -scheme GRDB \
+	  -configuration Release \
+	  -destination "generic/platform=macOS" \
+	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
+	  OTHER_SWIFT_FLAGS=$(OTHER_SWIFT_FLAGS) \
+	  GCC_PREPROCESSOR_DEFINITIONS=$(GCC_PREPROCESSOR_DEFINITIONS) \
+	  -archivePath "$(PWD)/Tests/products/GRDB.xcarchive" \
+	  SKIP_INSTALL=NO \
+	  BUILD_LIBRARY_FOR_DISTRIBUTION=YES
+	$(XCODEBUILD) -create-xcframework \
+	  -framework '$(PWD)/Tests/products/GRDB.xcarchive/Products/Library/Frameworks/GRDB.framework' \
+	  -output '$(PWD)/Tests/products/GRDB.xcframework'
 
 test_install_manual:
 	$(XCODEBUILD) \
@@ -334,7 +330,7 @@ test_install_manual:
 	  clean build \
 	  $(XCPRETTY)
 
-test_install_SPM: test_install_SPM_Package test_install_SPM_Project
+test_install_SPM: test_install_SPM_Package test_install_SPM_Project test_install_SPM_Dynamic_Project test_install_SPM_macos_release test_install_SPM_ios_release
 
 test_install_SPM_Package:
 	cd Tests/SPM/PlainPackage && \
@@ -345,6 +341,32 @@ test_install_SPM_Project:
 	$(XCODEBUILD) \
 	  -project Tests/SPM/PlainProject/Plain.xcodeproj \
 	  -scheme Plain \
+	  -configuration Release \
+	  clean build \
+	  $(XCPRETTY)
+	  
+test_install_SPM_Dynamic_Project:
+	$(XCODEBUILD) \
+	  -project Tests/SPM/ios-dynamic/ios-dynamic.xcodeproj \
+	  -scheme ios-dynamic \
+	  -destination $(MAX_IOS_DESTINATION) \
+	  -configuration Release \
+	  clean build \
+	  $(XCPRETTY)
+
+test_install_SPM_macos_release:
+	$(XCODEBUILD) \
+	  -project Tests/SPM/macos/macos.xcodeproj \
+	  -scheme macos \
+	  -configuration Release \
+	  clean build \
+	  $(XCPRETTY)
+
+test_install_SPM_ios_release:
+	$(XCODEBUILD) \
+	  -project Tests/SPM/ios/ios.xcodeproj \
+	  -scheme ios \
+	  -destination $(MAX_IOS_DESTINATION) \
 	  -configuration Release \
 	  clean build \
 	  $(XCPRETTY)
@@ -399,6 +421,30 @@ else
 	@exit 1
 endif
 
+test_GRDBDemoiOS:
+	$(XCODEBUILD) \
+	  -project Documentation/DemoApps/GRDBDemoiOS/GRDBDemoiOS.xcodeproj \
+	  -scheme GRDBDemoiOS \
+	  -destination $(MAX_IOS_DESTINATION) \
+	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
+	  $(TEST_ACTIONS)
+
+test_GRDBCombineDemo:
+	$(XCODEBUILD) \
+	  -project Documentation/DemoApps/GRDBCombineDemo/GRDBCombineDemo.xcodeproj \
+	  -scheme GRDBCombineDemo \
+	  -destination $(MAX_IOS_DESTINATION) \
+	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
+	  $(TEST_ACTIONS)
+
+test_GRDBAsyncDemo:
+	$(XCODEBUILD) \
+	  -project Documentation/DemoApps/GRDBAsyncDemo/GRDBAsyncDemo.xcodeproj \
+	  -scheme GRDBAsyncDemo \
+	  -destination $(MAX_IOS_DESTINATION) \
+	  SWIFT_VERSION=$(MAX_SWIFT_VERSION) \
+	  $(TEST_ACTIONS)
+
 test_performance:
 	$(XCODEBUILD) \
 	  -project Tests/Performance/GRDBPerformance/GRDBPerformance.xcodeproj \
@@ -430,13 +476,16 @@ ifdef JAZZY
 	  --clean \
 	  --author 'Gwendal Roué' \
 	  --author_url https://github.com/groue \
-	  --github_url https://github.com/groue/GRDB.swift \
-	  --github-file-prefix https://github.com/groue/GRDB.swift/tree/v5.6.0 \
-	  --module-version 5.6.0 \
+	  --source-host github \
+	  --source-host-url https://github.com/groue/GRDB.swift \
+	  --source-host-files-url https://github.com/groue/GRDB.swift/tree/v6.0.0 \
+	  --module-version 6.0.0 \
 	  --module GRDB \
-	  --root-url http://groue.github.io/GRDB.swift/docs/5.6/ \
+	  --root-url http://groue.github.io/GRDB.swift/docs/6.0/ \
 	  --output Documentation/Reference \
-	  --xcodebuild-arguments -project,GRDB.xcodeproj,-scheme,GRDBiOS
+	  --swift-build-tool xcodebuild \
+	  --undocumented-text '' \
+	  --xcodebuild-arguments -project,GRDB.xcodeproj,-scheme,GRDB
 else
 	@echo Jazzy must be installed for doc
 	@exit 1

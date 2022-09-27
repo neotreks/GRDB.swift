@@ -17,7 +17,7 @@ extension TableRequest where Self: FilteredRequest {
     /// all requests by the `TableRecord.databaseSelection` property, or
     /// for individual requests with the `TableRecord.select` method.
     public func matching(_ pattern: FTS5Pattern?) -> Self {
-        guard let pattern = pattern else {
+        guard let pattern else {
             return none()
         }
         let alias = TableAlias()
@@ -39,6 +39,17 @@ extension TableRecord {
     /// database row.
     public static func matching(_ pattern: FTS5Pattern?) -> QueryInterfaceRequest<Self> {
         all().matching(pattern)
+    }
+}
+
+extension ColumnExpression {
+    
+    /// A matching SQL expression with the `MATCH` SQL operator.
+    ///
+    ///     // content MATCH '...'
+    ///     Column("content").match(pattern)
+    public func match(_ pattern: FTS5Pattern) -> SQLExpression {
+        .binary(.match, sqlExpression, pattern.sqlExpression)
     }
 }
 #endif

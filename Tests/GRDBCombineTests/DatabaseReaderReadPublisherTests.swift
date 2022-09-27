@@ -31,20 +31,19 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
             return writer
         }
         
-        func test(reader: DatabaseReader) throws {
+        func test(reader: some DatabaseReader) throws {
             let publisher = reader.readPublisher(value: { db in
                 try Player.fetchCount(db)
             })
             let recorder = publisher.record()
-            let value = try wait(for: recorder.single, timeout: 1)
+            let value = try wait(for: recorder.single, timeout: 5)
             XCTAssertEqual(value, 0)
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
     }
     
     // MARK: -
@@ -130,12 +129,12 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
             throw XCTSkip("Combine is not available")
         }
         
-        func test(reader: DatabaseReader) throws {
+        func test(reader: some DatabaseReader) throws {
             let publisher = reader.readPublisher(value: { db in
                 try Row.fetchAll(db, sql: "THIS IS NOT SQL")
             })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_ERROR)
@@ -143,11 +142,10 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
             }
         }
         
-        try Test(test)
-            .run { DatabaseQueue() }
-            .runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0).makeSnapshot() }
+        try Test(test).run { try DatabaseQueue() }
+        try Test(test).runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0).makeSnapshot() }
     }
     
     // MARK: -
@@ -162,7 +160,7 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
             return writer
         }
         
-        func test(reader: DatabaseReader) throws {
+        func test(reader: some DatabaseReader) throws {
             let expectation = self.expectation(description: "")
             let semaphore = DispatchSemaphore(value: 0)
             let cancellable = reader
@@ -177,15 +175,14 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
                 })
             
             semaphore.signal()
-            waitForExpectations(timeout: 1, handler: nil)
+            waitForExpectations(timeout: 5, handler: nil)
             cancellable.cancel()
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
     }
     
     // MARK: -
@@ -200,7 +197,7 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
             return writer
         }
         
-        func test(reader: DatabaseReader) {
+        func test(reader: some DatabaseReader) {
             let expectation = self.expectation(description: "")
             let cancellable = reader
                 .readPublisher(value: { db in
@@ -215,15 +212,14 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
                         dispatchPrecondition(condition: .onQueue(.main))
                 })
             
-            waitForExpectations(timeout: 1, handler: nil)
+            waitForExpectations(timeout: 5, handler: nil)
             cancellable.cancel()
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
     }
     
     // MARK: -
@@ -238,7 +234,7 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
             return writer
         }
         
-        func test(reader: DatabaseReader) {
+        func test(reader: some DatabaseReader) {
             let queue = DispatchQueue(label: "test")
             let expectation = self.expectation(description: "")
             let cancellable = reader
@@ -254,15 +250,14 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
                         dispatchPrecondition(condition: .onQueue(queue))
                 })
             
-            waitForExpectations(timeout: 1, handler: nil)
+            waitForExpectations(timeout: 5, handler: nil)
             cancellable.cancel()
         }
         
-        try Test(test)
-            .run { try setUp(DatabaseQueue()) }
-            .runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
-            .runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
+        try Test(test).run { try setUp(DatabaseQueue()) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabaseQueue(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)) }
+        try Test(test).runAtTemporaryDatabasePath { try setUp(DatabasePool(path: $0)).makeSnapshot() }
     }
     
     // MARK: -
@@ -272,23 +267,22 @@ class DatabaseReaderReadPublisherTests : XCTestCase {
             throw XCTSkip("Combine is not available")
         }
         
-        func test(reader: DatabaseReader) throws {
+        func test(reader: some DatabaseReader) throws {
             let publisher = reader.readPublisher(value: { db in
                 try Player.createTable(db)
             })
             let recorder = publisher.record()
-            let recording = try wait(for: recorder.recording, timeout: 1)
+            let recording = try wait(for: recorder.recording, timeout: 5)
             XCTAssertTrue(recording.output.isEmpty)
             assertFailure(recording.completion) { (error: DatabaseError) in
                 XCTAssertEqual(error.resultCode, .SQLITE_READONLY)
             }
         }
         
-        try Test(test)
-            .run { DatabaseQueue() }
-            .runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
-            .runAtTemporaryDatabasePath { try DatabasePool(path: $0).makeSnapshot() }
+        try Test(test).run { try DatabaseQueue() }
+        try Test(test).runAtTemporaryDatabasePath { try DatabaseQueue(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0) }
+        try Test(test).runAtTemporaryDatabasePath { try DatabasePool(path: $0).makeSnapshot() }
     }
 }
 #endif

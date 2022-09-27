@@ -3,7 +3,7 @@ import XCTest
 
 class ForeignKeyInfoTests: GRDBTestCase {
     
-    private func _assertEqual(_ lhs: ForeignKeyInfo, _ rhs: ForeignKeyInfo, file: StaticString, line: UInt) {
+    private func assertEqual(_ lhs: ForeignKeyInfo, _ rhs: ForeignKeyInfo, file: StaticString = #file, line: UInt = #line) {
         XCTAssertEqual(lhs.destinationTable, rhs.destinationTable, file: file, line: line)
         XCTAssertEqual(lhs.mapping.count, rhs.mapping.count, file: file, line: line)
         for (larrow, rarrow) in zip(lhs.mapping, rhs.mapping) {
@@ -11,17 +11,6 @@ class ForeignKeyInfoTests: GRDBTestCase {
             XCTAssertEqual(larrow.destination, rarrow.destination, file: file, line: line)
         }
     }
-    
-    // #file vs. #filePath dance
-    #if compiler(>=5.3)
-    private func assertEqual(_ lhs: ForeignKeyInfo, _ rhs: ForeignKeyInfo, file: StaticString = #filePath, line: UInt = #line) {
-        _assertEqual(lhs, rhs, file: file, line: line)
-    }
-    #else
-    private func assertEqual(_ lhs: ForeignKeyInfo, _ rhs: ForeignKeyInfo, file: StaticString = #file, line: UInt = #line) {
-        _assertEqual(lhs, rhs, file: file, line: line)
-    }
-    #endif
     
     func testForeignKeys() throws {
         let dbQueue = try makeDatabaseQueue()
@@ -54,27 +43,181 @@ class ForeignKeyInfoTests: GRDBTestCase {
             do {
                 let foreignKeys = try db.foreignKeys(on: "children1")
                 XCTAssertEqual(foreignKeys.count, 1)
-                assertEqual(foreignKeys[0], ForeignKeyInfo(destinationTable: "parents1", mapping: [(origin: "parentId", destination: "id")]))
+                assertEqual(foreignKeys[0], ForeignKeyInfo(id: foreignKeys[0].id, destinationTable: "parents1", mapping: [(origin: "parentId", destination: "id")]))
             }
             
             do {
                 let foreignKeys = try db.foreignKeys(on: "children2")
                 XCTAssertEqual(foreignKeys.count, 2)
-                assertEqual(foreignKeys[0], ForeignKeyInfo(destinationTable: "parents1", mapping: [(origin: "parentId2", destination: "id")]))
-                assertEqual(foreignKeys[1], ForeignKeyInfo(destinationTable: "parents1", mapping: [(origin: "parentId1", destination: "id")]))
+                assertEqual(foreignKeys[0], ForeignKeyInfo(id: foreignKeys[0].id, destinationTable: "parents1", mapping: [(origin: "parentId2", destination: "id")]))
+                assertEqual(foreignKeys[1], ForeignKeyInfo(id: foreignKeys[1].id, destinationTable: "parents1", mapping: [(origin: "parentId1", destination: "id")]))
             }
             
             do {
                 let foreignKeys = try db.foreignKeys(on: "children3")
                 XCTAssertEqual(foreignKeys.count, 1)
-                assertEqual(foreignKeys[0], ForeignKeyInfo(destinationTable: "parents2", mapping: [(origin: "parentA", destination: "a"), (origin: "parentB", destination: "b")]))
+                assertEqual(foreignKeys[0], ForeignKeyInfo(id: foreignKeys[0].id, destinationTable: "parents2", mapping: [(origin: "parentA", destination: "a"), (origin: "parentB", destination: "b")]))
             }
             
             do {
                 let foreignKeys = try db.foreignKeys(on: "children4")
                 XCTAssertEqual(foreignKeys.count, 2)
-                assertEqual(foreignKeys[0], ForeignKeyInfo(destinationTable: "parents2", mapping: [(origin: "parentA2", destination: "b"), (origin: "parentB2", destination: "a")]))
-                assertEqual(foreignKeys[1], ForeignKeyInfo(destinationTable: "parents2", mapping: [(origin: "parentA1", destination: "a"), (origin: "parentB1", destination: "b")]))
+                assertEqual(foreignKeys[0], ForeignKeyInfo(id: foreignKeys[0].id, destinationTable: "parents2", mapping: [(origin: "parentA2", destination: "b"), (origin: "parentB2", destination: "a")]))
+                assertEqual(foreignKeys[1], ForeignKeyInfo(id: foreignKeys[1].id, destinationTable: "parents2", mapping: [(origin: "parentA1", destination: "a"), (origin: "parentB1", destination: "b")]))
+            }
+        }
+    }
+    
+    func testForeignKeyViolations() throws {
+        try makeDatabaseQueue().writeWithoutTransaction { db in
+            try db.execute(sql: """
+                CREATE TABLE parent(id TEXT NOT NULL PRIMARY KEY);
+                CREATE TABLE child1(id INTEGER NOT NULL PRIMARY KEY, parentId TEXT REFERENCES parent(id));
+                CREATE TABLE child2(id INTEGER NOT NULL PRIMARY KEY, parentId TEXT REFERENCES parent(id));
+                PRAGMA foreign_keys = OFF;
+                INSERT INTO child1 (id, parentId) VALUES (13, '1');
+                INSERT INTO child1 (id, parentId) VALUES (42, '2');
+                INSERT INTO child2 (id, parentId) VALUES (17, '3');
+                """)
+            
+            let violations = try Array(db.foreignKeyViolations())
+            XCTAssertEqual(violations.count, 3)
+            
+            if let violation = violations.first(where: { $0.originTable == "child1" && $0.originRowID == 13 }) {
+                XCTAssertEqual(violation.destinationTable, "parent")
+            } else {
+                XCTFail("Missing violation")
+            }
+            
+            if let violation = violations.first(where: { $0.originTable == "child1" && $0.originRowID == 42 }) {
+                XCTAssertEqual(violation.destinationTable, "parent")
+            } else {
+                XCTFail("Missing violation")
+            }
+            
+            if let violation = violations.first(where: { $0.originTable == "child2" && $0.originRowID == 17 }) {
+                XCTAssertEqual(violation.destinationTable, "parent")
+            } else {
+                XCTFail("Missing violation")
+            }
+        }
+    }
+    
+    func testForeignKeyViolationsInTable() throws {
+        try makeDatabaseQueue().writeWithoutTransaction { db in
+            try db.execute(sql: """
+                CREATE TABLE parent(id TEXT NOT NULL PRIMARY KEY);
+                CREATE TABLE child1(id INTEGER NOT NULL PRIMARY KEY, parentId TEXT REFERENCES parent(id));
+                CREATE TABLE child2(id INTEGER NOT NULL PRIMARY KEY, parentId TEXT REFERENCES parent(id));
+                PRAGMA foreign_keys = OFF;
+                INSERT INTO child1 (id, parentId) VALUES (13, '1');
+                INSERT INTO child1 (id, parentId) VALUES (42, '2');
+                INSERT INTO child2 (id, parentId) VALUES (17, '3');
+                """)
+            
+            do {
+                let violations = try Array(db.foreignKeyViolations(in: "child1"))
+                XCTAssertEqual(violations.count, 2)
+                
+                if let violation = violations.first(where: { $0.originRowID == 13 }) {
+                    XCTAssertEqual(violation.originTable, "child1")
+                    XCTAssertEqual(violation.destinationTable, "parent")
+                } else {
+                    XCTFail("Missing violation")
+                }
+                
+                if let violation = violations.first(where: { $0.originRowID == 42 }) {
+                    XCTAssertEqual(violation.originTable, "child1")
+                    XCTAssertEqual(violation.destinationTable, "parent")
+                } else {
+                    XCTFail("Missing violation")
+                }
+            }
+            
+            do {
+                let violations = try Array(db.foreignKeyViolations(in: "child2"))
+                XCTAssertEqual(violations.count, 1)
+                
+                if let violation = violations.first(where: { $0.originRowID == 17 }) {
+                    XCTAssertEqual(violation.originTable, "child2")
+                    XCTAssertEqual(violation.destinationTable, "parent")
+                } else {
+                    XCTFail("Missing violation")
+                }
+            }
+            
+            // Case insensitivity
+            do {
+                let violations = try Array(db.foreignKeyViolations(in: "cHiLd2"))
+                XCTAssertEqual(violations.count, 1)
+                
+                if let violation = violations.first(where: { $0.originRowID == 17 }) {
+                    XCTAssertEqual(violation.originTable, "child2")
+                    XCTAssertEqual(violation.destinationTable, "parent")
+                } else {
+                    XCTFail("Missing violation")
+                }
+            }
+            
+            // Missing table
+            do {
+                _ = try db.foreignKeyViolations(in: "missing")
+            } catch DatabaseError.SQLITE_ERROR { }
+        }
+    }
+    
+    func testCheckForeignKeys() throws {
+        try makeDatabaseQueue().writeWithoutTransaction { db in
+            try db.execute(sql: """
+                CREATE TABLE parent(id TEXT NOT NULL PRIMARY KEY);
+                CREATE TABLE child(id INTEGER NOT NULL PRIMARY KEY, parentId TEXT REFERENCES parent(id));
+                PRAGMA foreign_keys = OFF;
+                INSERT INTO child (id, parentId) VALUES (13, '1');
+                """)
+            
+            do {
+                try db.checkForeignKeys()
+            } catch let error as DatabaseError {
+                XCTAssertEqual(error.resultCode, .SQLITE_CONSTRAINT)
+                XCTAssertEqual(error.extendedResultCode, .SQLITE_CONSTRAINT_FOREIGNKEY)
+                XCTAssertEqual(error.message, #"FOREIGN KEY constraint violation - from child(parentId) to parent(id), in [id:13 parentId:"1"]"#)
+                XCTAssertEqual(error.description, #"SQLite error 19: FOREIGN KEY constraint violation - from child(parentId) to parent(id), in [id:13 parentId:"1"]"#)
+            }
+        }
+        
+        try makeDatabaseQueue().writeWithoutTransaction { db in
+            try db.execute(sql: """
+                CREATE TABLE parent(a TEXT NOT NULL, b TEXT NOT NULL, PRIMARY KEY (a, b));
+                CREATE TABLE child(id INTEGER NOT NULL PRIMARY KEY, parentA, parentB, FOREIGN KEY (parentA, parentB) REFERENCES parent(a, b));
+                PRAGMA foreign_keys = OFF;
+                INSERT INTO child (id, parentA, parentB) VALUES (13, 'foo', 'bar');
+                """)
+            
+            do {
+                try db.checkForeignKeys()
+            } catch let error as DatabaseError {
+                XCTAssertEqual(error.resultCode, .SQLITE_CONSTRAINT)
+                XCTAssertEqual(error.extendedResultCode, .SQLITE_CONSTRAINT_FOREIGNKEY)
+                XCTAssertEqual(error.message, #"FOREIGN KEY constraint violation - from child(parentA, parentB) to parent(a, b), in [id:13 parentA:"foo" parentB:"bar"]"#)
+                XCTAssertEqual(error.description, #"SQLite error 19: FOREIGN KEY constraint violation - from child(parentA, parentB) to parent(a, b), in [id:13 parentA:"foo" parentB:"bar"]"#)
+            }
+        }
+        
+        try makeDatabaseQueue().writeWithoutTransaction { db in
+            try db.execute(sql: """
+                CREATE TABLE parent(a TEXT NOT NULL, b TEXT NOT NULL, PRIMARY KEY (a, b));
+                CREATE TABLE child(id INTEGER NOT NULL PRIMARY KEY, parentA, parentB, FOREIGN KEY (parentA, parentB) REFERENCES parent(a, b)) WITHOUT ROWID;
+                PRAGMA foreign_keys = OFF;
+                INSERT INTO child (id, parentA, parentB) VALUES (13, 'foo', 'bar');
+                """)
+            
+            do {
+                try db.checkForeignKeys()
+            } catch let error as DatabaseError {
+                XCTAssertEqual(error.resultCode, .SQLITE_CONSTRAINT)
+                XCTAssertEqual(error.extendedResultCode, .SQLITE_CONSTRAINT_FOREIGNKEY)
+                XCTAssertEqual(error.message, "FOREIGN KEY constraint violation - from child(parentA, parentB) to parent(a, b)")
+                XCTAssertEqual(error.description, "SQLite error 19: FOREIGN KEY constraint violation - from child(parentA, parentB) to parent(a, b)")
             }
         }
     }
