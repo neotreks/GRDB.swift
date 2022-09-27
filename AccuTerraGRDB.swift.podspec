@@ -8,7 +8,7 @@ Pod::Spec.new do |s|
   s.author   = { 'Gwendal Roué' => 'gr@pierlis.com' }
   s.source = {
     "git": "https://github.com/neotreks/GRDB.swift.git",
-    "tag": "AccuTerrav5.6.1"
+    "tag": "AccuTerrav6.0.0"
   }
   s.module_name = 'GRDB'
   
