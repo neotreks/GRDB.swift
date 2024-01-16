@@ -1,3 +1,6 @@
 [submodule "SQLiteCustom/src"]
 	path = SQLiteCustom/src
 	url = https://github.com/swiftlyfalling/SQLiteLib.git
+[submodule "SQLCipher"]
+	path = SQLCipher
+	url = https://github.com/neotreks/sqlcipher.git
