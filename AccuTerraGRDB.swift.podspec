@@ -8,10 +8,14 @@ Pod::Spec.new do |s|
   s.author   = { 'Gwendal Roué' => 'gr@pierlis.com' }
   s.source = {
     "git": "https://github.com/neotreks/GRDB.swift.git",
-    "tag": "AccuTerrav6.24.1"
+    "tag": "AccuTerrav6.26.0"
   }
   s.module_name = 'GRDB'
-  
+  s.resource_bundles = {
+    "GRDB": [
+      "GRDB/PrivacyInfo.xcprivacy"
+    ]
+  }
   s.swift_versions = ['5.7']
   s.ios.deployment_target = '14.0'
   s.osx.deployment_target = '10.13'
