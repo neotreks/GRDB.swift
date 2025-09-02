@@ -1,0 +1,4 @@
+module GRDB_C {
+    header "SQLCipher_config.h"
+    export *
+}
