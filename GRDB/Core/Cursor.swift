@@ -195,6 +195,56 @@ extension Set {
         // database cursors.
         try cursor.forEach { insert($0) }
     }
+    
+    /// Returns a new set with the elements of both this set and the
+    /// given cursor.
+    ///
+    /// If the set already contains one or more elements that are also in
+    /// the cursor, the existing members are kept. If the cursor contains
+    /// multiple instances of equivalent elements, only the first instance
+    /// is kept.
+    ///
+    /// - parameter cursor: A cursor of elements.
+    /// - returns: A new set with the unique elements of this set
+    ///   and `cursor`.
+    public func union(_ cursor: some Cursor<Element>) throws -> Set<Element> {
+        var result = self
+        try result.formUnion(cursor)
+        return result
+    }
+
+    /// Inserts the elements of the given cursor into the set.
+    ///
+    /// If the set already contains one or more elements that are also in
+    /// the cursor, the existing members are kept. If the cursor contains
+    /// multiple instances of equivalent elements, only the first instance
+    /// is kept.
+    ///
+    /// - parameter cursor: A cursor of elements.
+    public mutating func formUnion(_ cursor: some Cursor<Element>) throws {
+        while let element = try cursor.next() {
+            insert(element)
+        }
+    }
+    
+    /// Returns a new set with the elements that are common to both this set
+    /// and the given cursor.
+    ///
+    /// - parameter cursor: A cursor of elements.
+    /// - returns: A new set.
+    public func intersection(_ cursor: some Cursor<Element>) throws -> Set<Element> {
+        var result = self
+        try result.formIntersection(cursor)
+        return result
+    }
+
+    /// Removes the elements of the set that aren’t also in the
+    /// given cursor.
+    ///
+    /// - parameter cursor: A cursor of elements.
+    public mutating func formIntersection(_ cursor: some Cursor<Element>) throws {
+        try formIntersection(Set(cursor))
+    }
 }
 
 extension Sequence {
@@ -620,9 +670,6 @@ extension Cursor where Element: Equatable {
 extension Cursor where Element: Comparable {
     /// Returns the maximum element in the cursor.
     ///
-    /// - Parameter areInIncreasingOrder: A predicate that returns `true`
-    ///   if its first argument should be ordered before its second
-    ///   argument; otherwise, `false`.
     /// - Returns: The cursor's maximum element, according to
     ///   `areInIncreasingOrder`. If the cursor has no elements, returns
     ///   `nil`.
@@ -632,9 +679,6 @@ extension Cursor where Element: Comparable {
     
     /// Returns the minimum element in the cursor.
     ///
-    /// - Parameter areInIncreasingOrder: A predicate that returns `true`
-    ///   if its first argument should be ordered before its second
-    ///   argument; otherwise, `false`.
     /// - Returns: The cursor's minimum element, according to
     ///   `areInIncreasingOrder`. If the cursor has no elements, returns
     ///   `nil`.
@@ -704,17 +748,13 @@ public final class AnyCursor<Element>: Cursor {
     }
     
     /// Creates a new cursor whose elements are elements of `iterator`.
-    public convenience init<I>(iterator: I)
-    where I: IteratorProtocol, I.Element == Element
-    {
+    public convenience init(iterator: some IteratorProtocol<Element>) {
         var iterator = iterator
         self.init { iterator.next() }
     }
     
     /// Creates a new cursor whose elements are elements of `sequence`.
-    public convenience init<S>(_ sequence: S)
-    where S: Sequence, S.Element == Element
-    {
+    public convenience init(_ sequence: some Sequence<Element>) {
         self.init(iterator: sequence.makeIterator())
     }
     
@@ -864,6 +904,10 @@ public final class FilterCursor<Base: Cursor> {
         self.isIncluded = isIncluded
     }
 }
+
+// Explicit non-conformance to Sendable.
+@available(*, unavailable)
+extension FilterCursor: Sendable { }
 
 extension FilterCursor: Cursor {
     public func next() throws -> Base.Element? {

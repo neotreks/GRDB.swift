@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name     = 'AccuTerraGRDB.swift'
-  s.version  = '6.26.0'
-  
+  s.version  = '7.6.1'
+
   s.license  = { :type => 'MIT', :file => 'LICENSE' }
   s.summary  = 'A toolkit for SQLite databases, with a focus on application development.'
   s.homepage = 'https://github.com/groue/GRDB.swift'
@@ -16,11 +16,11 @@ Pod::Spec.new do |s|
       "GRDB/PrivacyInfo.xcprivacy"
     ]
   }
-  s.swift_versions = ['5.7']
-  s.ios.deployment_target = '14.0'
-  s.osx.deployment_target = '10.13'
-  s.watchos.deployment_target = '4.0'
-  s.tvos.deployment_target = '11.0'
+    s.swift_versions = ['6']
+  s.ios.deployment_target = '13.0'
+  s.osx.deployment_target = '10.15'
+  s.watchos.deployment_target = '7.0'
+  s.tvos.deployment_target = '13.0'
   s.default_subspec  = 'SQLCipher'
   
   s.subspec 'standard' do |ss|

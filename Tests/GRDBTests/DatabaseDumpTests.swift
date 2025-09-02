@@ -51,10 +51,8 @@ final class DatabaseDumpTests: GRDBTestCase {
                 blob: utf8 short|您好🙂
                 blob: uuid|69BF8A9C-D9F0-4777-BD11-93451D84CBCF
                 double: -1.0|-1.0
-                double: -inf|-inf
                 double: 0.0|0.0
                 double: 123.45|123.45
-                double: inf|inf
                 double: nan|
                 integer: -1|-1
                 integer: 0|0
@@ -231,10 +229,6 @@ final class DatabaseDumpTests: GRDBTestCase {
     // MARK: - JSON
     
     func test_json_value_formatting() throws {
-        guard #available(iOS 13.0, macOS 10.15, tvOS 13.0, watchOS 6.0, *) else {
-            throw XCTSkip("Skip because this test relies on JSONEncoder.OutputFormatting.withoutEscapingSlashes")
-        }
-        
         try makeValuesDatabase().read { db in
             let stream = TestStream()
             try db.dumpSQL("SELECT * FROM value ORDER BY name", format: .json(), to: stream)
@@ -250,10 +244,8 @@ final class DatabaseDumpTests: GRDBTestCase {
                 {"name":"blob: utf8 short","value":"5oKo5aW98J+Zgg=="},
                 {"name":"blob: uuid","value":"ab+KnNnwR3e9EZNFHYTLzw=="},
                 {"name":"double: -1.0","value":-1},
-                {"name":"double: -inf","value":"-inf"},
                 {"name":"double: 0.0","value":0},
                 {"name":"double: 123.45","value":123.45},
-                {"name":"double: inf","value":"inf"},
                 {"name":"double: nan","value":null},
                 {"name":"integer: -1","value":-1},
                 {"name":"integer: 0","value":0},
@@ -413,17 +405,11 @@ final class DatabaseDumpTests: GRDBTestCase {
                  name = double: -1.0
                 value = -1.0
                 
-                 name = double: -inf
-                value = -inf
-                
                  name = double: 0.0
                 value = 0.0
                 
                  name = double: 123.45
                 value = 123.45
-                
-                 name = double: inf
-                value = inf
                 
                  name = double: nan
                 value = \n\
@@ -604,10 +590,8 @@ final class DatabaseDumpTests: GRDBTestCase {
                 blob: utf8 short|您好🙂
                 blob: uuid|\("i\u{fffd}\u{fffd}\u{fffd}\u{fffd}\u{fffd}Gw\u{fffd}\u{11}\u{fffd}E\u{1d}\u{fffd}\u{fffd}\u{fffd}")
                 double: -1.0|-1.0
-                double: -inf|-inf
                 double: 0.0|0.0
                 double: 123.45|123.45
-                double: inf|inf
                 double: nan|
                 integer: -1|-1
                 integer: 0|0
@@ -799,10 +783,8 @@ final class DatabaseDumpTests: GRDBTestCase {
                 'blob: utf8 short',X'E682A8E5A5BDF09F9982'
                 'blob: uuid',X'69BF8A9CD9F04777BD1193451D84CBCF'
                 'double: -1.0',-1.0
-                'double: -inf',-Inf
                 'double: 0.0',0.0
                 'double: 123.45',123.45
-                'double: inf',Inf
                 'double: nan',NULL
                 'integer: -1',-1
                 'integer: 0',0
@@ -1291,7 +1273,7 @@ final class DatabaseDumpTests: GRDBTestCase {
     }
     
     func test_dumpSchema_ignores_shadow_tables() throws {
-        guard sqlite3_libversion_number() >= 3037000 else {
+        guard Database.sqliteLibVersionNumber >= 3037000 else {
             throw XCTSkip("Can't detect shadow tables")
         }
         
@@ -1495,7 +1477,7 @@ final class DatabaseDumpTests: GRDBTestCase {
     }
     
     func test_dumpContent_ignores_shadow_tables() throws {
-        guard sqlite3_libversion_number() >= 3037000 else {
+        guard Database.sqliteLibVersionNumber >= 3037000 else {
             throw XCTSkip("Can't detect shadow tables")
         }
         
@@ -1586,10 +1568,8 @@ final class DatabaseDumpTests: GRDBTestCase {
                 INSERT INTO value VALUES ('blob: uuid', x'69BF8A9CD9F04777BD1193451D84CBCF');
                 
                 INSERT INTO value VALUES ('double: -1.0', -1.0);
-                INSERT INTO value VALUES ('double: -inf', \(-1.0 / 0));
                 INSERT INTO value VALUES ('double: 0.0', 0.0);
                 INSERT INTO value VALUES ('double: 123.45', 123.45);
-                INSERT INTO value VALUES ('double: inf', \(1.0 / 0));
                 INSERT INTO value VALUES ('double: nan', \(0.0 / 0));
                 
                 INSERT INTO value VALUES ('integer: 0', 0);
