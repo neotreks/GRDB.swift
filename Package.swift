@@ -56,25 +56,13 @@ let package = Package(
         .watchOS(.v7),
     ],
     products: [
-        .library(name: "GRDBSQLite", targets: ["GRDBSQLite"]),
         .library(name: "GRDB", targets: ["GRDB"]),
         .library(name: "GRDB-dynamic", type: .dynamic, targets: ["GRDB"]),
-        .library(name: "GRDBSQLCipher", targets: ["GRDBSQLCipher"]), // New SQLCipher variant
     ],
     dependencies: dependencies,
     targets: [
-        .systemLibrary(
-            name: "GRDBSQLite",
-            providers: [.apt(["libsqlite3-dev"])]),
         .target(
             name: "GRDB",
-            dependencies: ["GRDBSQLite"],
-            path: "GRDB",
-            resources: [.copy("PrivacyInfo.xcprivacy")],
-            cSettings: cSettings,
-            swiftSettings: swiftSettings),
-        .target(
-            name: "GRDBSQLCipher", 
             dependencies: [
                 .product(name: "AccuTerraSQLCipher", package: "sqlcipher-distribution")
             ],
@@ -89,64 +77,6 @@ let package = Package(
         .testTarget(
             name: "GRDBTests",
             dependencies: ["GRDB"],
-            path: "Tests",
-            exclude: [
-                "CocoaPods",
-                "Crash",
-                "CustomSQLite",
-                "GRDBManualInstall",
-                "GRDBTests/getThreadsCount.c",
-                "Info.plist",
-                "Performance",
-                "SPM",
-                "Swift6Migration",
-                "generatePerformanceReport.rb",
-                "parsePerformanceTests.rb",
-            ],
-            resources: [
-                .copy("GRDBTests/Betty.jpeg"),
-                .copy("GRDBTests/InflectionsTests.json"),
-                .copy("GRDBTests/Issue1383.sqlite"),
-            ],
-            cSettings: cSettings,
-            swiftSettings: swiftSettings + [
-                // Tests still use the Swift 5 language mode.
-                .swiftLanguageMode(.v5),
-                .enableUpcomingFeature("InferSendableFromCaptures"),
-                .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
-            ]),
-        .testTarget(
-            name: "GRDBSQLCipherTests",
-            dependencies: ["GRDBSQLCipher"], // Use SQLCipher variant instead
-            path: "Tests",
-            exclude: [
-                "CocoaPods",
-                "Crash",
-                "CustomSQLite",
-                "GRDBManualInstall",
-                "GRDBTests/getThreadsCount.c",
-                "Info.plist",
-                "Performance",
-                "SPM",
-                "Swift6Migration",
-                "generatePerformanceReport.rb",
-                "parsePerformanceTests.rb",
-            ],
-            resources: [
-                .copy("GRDBTests/Betty.jpeg"),
-                .copy("GRDBTests/InflectionsTests.json"),
-                .copy("GRDBTests/Issue1383.sqlite"),
-            ],
-            cSettings: cSettings,
-            swiftSettings: swiftSettings + [
-                // Tests still use the Swift 5 language mode.
-                .swiftLanguageMode(.v5),
-                .enableUpcomingFeature("InferSendableFromCaptures"),
-                .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
-            ]),
-        .testTarget(
-            name: "GRDBSQLCipherTests",
-            dependencies: ["GRDBSQLCipher"], // Use SQLCipher variant instead
             path: "Tests",
             exclude: [
                 "CocoaPods",
