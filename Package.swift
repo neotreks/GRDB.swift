@@ -79,14 +79,45 @@ let package = Package(
                 .product(name: "AccuTerraSQLCipher", package: "sqlcipher-distribution")
             ],
             path: "GRDB",
-            sources: [".", "../Support/SQLCipher_config.h"], // Include the config header
             resources: [.copy("PrivacyInfo.xcprivacy")],
-            cSettings: cSettingsCipher,
+            publicHeadersPath: "../Support",
+            cSettings: cSettingsCipher + [
+                .headerSearchPath("../Support")
+            ],
             swiftSettings: swiftSettingsCipher
         ),
         .testTarget(
             name: "GRDBTests",
             dependencies: ["GRDB"],
+            path: "Tests",
+            exclude: [
+                "CocoaPods",
+                "Crash",
+                "CustomSQLite",
+                "GRDBManualInstall",
+                "GRDBTests/getThreadsCount.c",
+                "Info.plist",
+                "Performance",
+                "SPM",
+                "Swift6Migration",
+                "generatePerformanceReport.rb",
+                "parsePerformanceTests.rb",
+            ],
+            resources: [
+                .copy("GRDBTests/Betty.jpeg"),
+                .copy("GRDBTests/InflectionsTests.json"),
+                .copy("GRDBTests/Issue1383.sqlite"),
+            ],
+            cSettings: cSettings,
+            swiftSettings: swiftSettings + [
+                // Tests still use the Swift 5 language mode.
+                .swiftLanguageMode(.v5),
+                .enableUpcomingFeature("InferSendableFromCaptures"),
+                .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
+            ]),
+        .testTarget(
+            name: "GRDBSQLCipherTests",
+            dependencies: ["GRDBSQLCipher"], // Use SQLCipher variant instead
             path: "Tests",
             exclude: [
                 "CocoaPods",
