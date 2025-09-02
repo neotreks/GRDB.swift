@@ -8,7 +8,23 @@ var swiftSettings: [SwiftSetting] = [
     .define("SQLITE_ENABLE_FTS5"),
 ]
 var cSettings: [CSetting] = []
-var dependencies: [PackageDescription.Package.Dependency] = []
+
+var swiftSettingsCipher: [SwiftSetting] = [
+    .define("SQLITE_ENABLE_FTS5"),
+    .define("SQLITE_HAS_CODEC"),
+    .define("GRDBCIPHER"),
+]
+
+var cSettingsCipher: [CSetting] = [
+    .define("SQLITE_HAS_CODEC"),
+    .define("GRDBCIPHER"), 
+    .define("SQLITE_ENABLE_FTS5"),
+    .define("GRDB_SQLITE_ENABLE_PREUPDATE_HOOK")
+]
+
+var dependencies: [PackageDescription.Package.Dependency] = [
+    .package(url: "https://github.com/neotreks/sqlcipher-distribution", from: "4.5.7")
+]
 
 // Don't rely on those environment variables. They are ONLY testing conveniences:
 // $ SQLITE_ENABLE_PREUPDATE_HOOK=1 make test_SPM
@@ -40,6 +56,7 @@ let package = Package(
         .library(name: "GRDBSQLite", targets: ["GRDBSQLite"]),
         .library(name: "GRDB", targets: ["GRDB"]),
         .library(name: "GRDB-dynamic", type: .dynamic, targets: ["GRDB"]),
+        .library(name: "GRDBSQLCipher", targets: ["GRDBSQLCipher"]), // New SQLCipher variant
     ],
     dependencies: dependencies,
     targets: [
@@ -53,6 +70,15 @@ let package = Package(
             resources: [.copy("PrivacyInfo.xcprivacy")],
             cSettings: cSettings,
             swiftSettings: swiftSettings),
+        .target(
+            name: "GRDBSQLCipher", 
+            dependencies: ["AccuTerraSQLCipher"],
+            path: "GRDB",
+            sources: [".", "../Support/SQLCipher_config.h"], // Include the config header
+            resources: [.copy("PrivacyInfo.xcprivacy")],
+            cSettings: cSettingsCipher,
+            swiftSettings: swiftSettingsCipher
+        ),
         .testTarget(
             name: "GRDBTests",
             dependencies: ["GRDB"],
@@ -77,6 +103,35 @@ let package = Package(
             ],
             cSettings: cSettings,
             swiftSettings: swiftSettings + [
+                // Tests still use the Swift 5 language mode.
+                .swiftLanguageMode(.v5),
+                .enableUpcomingFeature("InferSendableFromCaptures"),
+                .enableUpcomingFeature("GlobalActorIsolatedTypesUsability"),
+            ]),
+        .testTarget(
+            name: "GRDBSQLCipherTests",
+            dependencies: ["GRDBSQLCipher"], // Use SQLCipher variant instead
+            path: "Tests",
+            exclude: [
+                "CocoaPods",
+                "Crash",
+                "CustomSQLite",
+                "GRDBManualInstall",
+                "GRDBTests/getThreadsCount.c",
+                "Info.plist",
+                "Performance",
+                "SPM",
+                "Swift6Migration",
+                "generatePerformanceReport.rb",
+                "parsePerformanceTests.rb",
+            ],
+            resources: [
+                .copy("GRDBTests/Betty.jpeg"),
+                .copy("GRDBTests/InflectionsTests.json"),
+                .copy("GRDBTests/Issue1383.sqlite"),
+            ],
+            cSettings: cSettingsCipher,
+            swiftSettings: swiftSettingsCipher + [
                 // Tests still use the Swift 5 language mode.
                 .swiftLanguageMode(.v5),
                 .enableUpcomingFeature("InferSendableFromCaptures"),
