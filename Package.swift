@@ -68,7 +68,6 @@ let package = Package(
             ],
             path: "GRDB",
             resources: [.copy("PrivacyInfo.xcprivacy")],
-            publicHeadersPath: "include",
             cSettings: cSettingsCipher,
             swiftSettings: swiftSettingsCipher
         ),
