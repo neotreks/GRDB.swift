@@ -31,6 +31,9 @@ var dependencies: [PackageDescription.Package.Dependency] = [
 if ProcessInfo.processInfo.environment["SQLITE_ENABLE_PREUPDATE_HOOK"] == "1" {
     swiftSettings.append(.define("SQLITE_ENABLE_PREUPDATE_HOOK"))
     cSettings.append(.define("GRDB_SQLITE_ENABLE_PREUPDATE_HOOK"))
+    
+    swiftSettingsCipher.append(.define("SQLITE_ENABLE_PREUPDATE_HOOK"))
+    cSettingsCipher.append(.define("GRDB_SQLITE_ENABLE_PREUPDATE_HOOK"))
 }
 
 // The SPI_BUILDER environment variable enables documentation building
@@ -72,7 +75,9 @@ let package = Package(
             swiftSettings: swiftSettings),
         .target(
             name: "GRDBSQLCipher", 
-            dependencies: ["AccuTerraSQLCipher"],
+            dependencies: [
+                .product(name: "AccuTerraSQLCipher", package: "sqlcipher-distribution")
+            ],
             path: "GRDB",
             sources: [".", "../Support/SQLCipher_config.h"], // Include the config header
             resources: [.copy("PrivacyInfo.xcprivacy")],
