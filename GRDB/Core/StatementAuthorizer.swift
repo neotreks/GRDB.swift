@@ -1,5 +1,5 @@
 // Import C SQLite functions
-internal import AccuTerraSQLCipher
+import AccuTerraSQLCipher
 
 #if canImport(string_h)
 import string_h

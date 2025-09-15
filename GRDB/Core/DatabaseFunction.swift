@@ -1,5 +1,5 @@
 // Import C SQLite functions
-internal import AccuTerraSQLCipher
+import AccuTerraSQLCipher
 
 /// A custom SQL function or aggregate.
 ///

@@ -1,5 +1,5 @@
 // Import C SQLite functions
-internal import AccuTerraSQLCipher
+import AccuTerraSQLCipher
 
 /// A format that prints one line per database row, formatting values
 /// as SQL literals.

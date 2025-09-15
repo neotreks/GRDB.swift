@@ -1,5 +1,5 @@
 // Import C SQLite functions
-internal import AccuTerraSQLCipher
+import AccuTerraSQLCipher
 
 /// A type that can decode itself from the low-level C interface to
 /// SQLite results.
