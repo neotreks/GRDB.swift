@@ -1,5 +1,5 @@
 // Import C SQLite functions
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 
 extension Optional: StatementBinding where Wrapped: StatementBinding {
     public func bind(to sqliteStatement: SQLiteStatement, at index: CInt) -> CInt {

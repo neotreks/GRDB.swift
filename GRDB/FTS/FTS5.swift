@@ -1,6 +1,6 @@
 #if SQLITE_ENABLE_FTS5
 // Import C SQLite functions
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 
 import Foundation
 

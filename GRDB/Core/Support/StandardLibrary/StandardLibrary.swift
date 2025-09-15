@@ -1,5 +1,5 @@
 // Import C SQLite functions
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 
 // MARK: - Value Types
 

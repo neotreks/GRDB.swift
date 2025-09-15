@@ -1,6 +1,6 @@
 #if SQLITE_ENABLE_FTS5
 // Import C SQLite functions
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 
 /// A type that implements a custom tokenizer for the ``FTS5`` full-text engine.
 ///

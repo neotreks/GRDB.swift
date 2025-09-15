@@ -1,5 +1,5 @@
 // Import C SQLite functions
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 
 extension Database {
     /// A cache for the available database schemas.

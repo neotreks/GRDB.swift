@@ -1,6 +1,6 @@
 #if SQLITE_ENABLE_SNAPSHOT || (!GRDBCUSTOMSQLITE && !GRDBCIPHER)
 // Import C SQLite functions
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 
 /// An instance of WALSnapshot records the state of a WAL mode database for some
 /// specific point in history.

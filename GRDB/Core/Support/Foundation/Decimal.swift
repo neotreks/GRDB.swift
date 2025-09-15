@@ -1,6 +1,6 @@
 #if !os(Linux)
 // Import C SQLite functions
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 
 import Foundation
 
