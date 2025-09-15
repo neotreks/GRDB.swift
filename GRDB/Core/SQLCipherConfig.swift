@@ -1,5 +1,5 @@
 // Swift implementations for SQLCipher config functionality
-import AccuTerraSQLCipher
+internal import AccuTerraSQLCipher
 import Foundation
 
 // Simple Swift implementation - no C wrapper needed
