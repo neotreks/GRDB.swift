@@ -1,5 +1,5 @@
 import Foundation
-import GRDB
+import ATGRDB
 
 extension AppDatabase {
     /// The database for the application

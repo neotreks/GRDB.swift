@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 final class JSONColumnTests: GRDBTestCase {
     func test_JSONColumn_derived_from_CodingKey() throws {

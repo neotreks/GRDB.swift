@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private func myCast<T: SQLExpressible>(_ value: T, as type: Database.ColumnType) -> SQLExpression {
     SQL("CAST(\(value) AS \(sql: type.rawValue))").sqlExpression

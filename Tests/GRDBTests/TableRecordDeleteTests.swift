@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct Hacker : TableRecord {
     static let databaseTableName = "hackers"

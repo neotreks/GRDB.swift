@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct A: Codable, FetchableRecord, PersistableRecord {
     static let b = belongsTo(B.self)

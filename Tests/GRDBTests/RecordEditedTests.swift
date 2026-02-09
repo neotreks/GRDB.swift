@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private class Person : Record {
     var id: Int64!

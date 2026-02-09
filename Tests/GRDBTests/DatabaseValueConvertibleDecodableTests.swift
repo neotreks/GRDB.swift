@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class DatabaseValueConvertibleDecodableTests: GRDBTestCase {
     func testDatabaseValueConvertibleImplementationDerivedFromDecodable1() throws {

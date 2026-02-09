@@ -7,7 +7,7 @@ Pod::Spec.new do |s|
   s.homepage = 'https://github.com/groue/GRDB.swift'
   s.author   = { 'Gwendal Roué' => 'gr@pierlis.com' }
   s.source   = { :git => 'https://github.com/groue/GRDB.swift.git', :tag => "v#{s.version}" }
-  s.module_name = 'GRDB'
+  s.module_name = 'ATGRDB'
   
   s.swift_versions = ['6']
   s.ios.deployment_target = '13.0'

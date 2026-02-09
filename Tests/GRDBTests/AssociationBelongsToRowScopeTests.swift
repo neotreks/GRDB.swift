@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct Team: Codable, FetchableRecord, PersistableRecord {
     static let databaseTableName = "teams"

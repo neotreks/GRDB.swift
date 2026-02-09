@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct A: TableRecord, FetchableRecord, Equatable {
     var cola1: Int64

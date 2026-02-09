@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // Item has no primary key.
 private class Item : Record, Hashable {

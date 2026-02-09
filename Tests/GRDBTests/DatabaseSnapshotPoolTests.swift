@@ -1,6 +1,6 @@
 #if SQLITE_ENABLE_SNAPSHOT || (!GRDBCUSTOMSQLITE && !GRDBCIPHER)
 import XCTest
-import GRDB
+import ATGRDB
 
 // test create from non-wal (read-only) snapshot
 final class DatabaseSnapshotPoolTests: GRDBTestCase {

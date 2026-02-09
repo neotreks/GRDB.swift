@@ -12,9 +12,9 @@ let package = Package(
         .watchOS(.v7),
     ],
     dependencies: [
-        .package(name: "GRDB", path: "../../.."),
+        .package(name: "ATGRDB", path: "../../.."),
     ],
     targets: [
-        .executableTarget(name: "SPM", dependencies: ["GRDB"]),
+        .executableTarget(name: "SPM", dependencies: ["ATGRDB"]),
     ]
 )

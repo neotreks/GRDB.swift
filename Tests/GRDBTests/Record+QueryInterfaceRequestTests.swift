@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private class Reader : Record {
     var id: Int64?

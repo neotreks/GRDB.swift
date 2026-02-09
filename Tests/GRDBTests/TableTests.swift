@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class TableTests: GRDBTestCase {
     func test_Table_nameRoundTrip() {

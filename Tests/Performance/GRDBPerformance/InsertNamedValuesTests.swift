@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 #if GRDB_COMPARE
 import SQLite
 #endif

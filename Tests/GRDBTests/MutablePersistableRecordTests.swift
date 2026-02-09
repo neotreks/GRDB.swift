@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct MutablePersistableRecordPerson : MutablePersistableRecord {
     var id: Int64?

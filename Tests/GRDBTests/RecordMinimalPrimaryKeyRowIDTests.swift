@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // MinimalRowID is the most tiny class with a RowID primary key which supports
 // read and write operations of Record.

@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class DatabaseQueueInMemoryTests : GRDBTestCase {
     func test_independent_in_memory_database() throws {

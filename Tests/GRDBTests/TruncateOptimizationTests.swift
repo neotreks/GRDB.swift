@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class TruncateOptimizationTests: GRDBTestCase {
     // https://www.sqlite.org/c3ref/update_hook.html

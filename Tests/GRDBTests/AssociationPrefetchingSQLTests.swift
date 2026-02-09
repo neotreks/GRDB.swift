@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct A: TableRecord { }
 private struct B: TableRecord { }

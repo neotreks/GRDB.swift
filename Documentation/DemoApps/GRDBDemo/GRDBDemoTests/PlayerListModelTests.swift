@@ -1,6 +1,6 @@
 import Testing
-import GRDB
-@testable import GRDBDemo
+import ATGRDB
+@testable import ATGRDBDemo
 
 struct PlayerListModelTests {
     // MARK: - PlayerListModel.observePlayers tests

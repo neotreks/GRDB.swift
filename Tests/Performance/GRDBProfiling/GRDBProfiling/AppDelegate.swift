@@ -1,5 +1,5 @@
 import Cocoa
-import GRDB
+import ATGRDB
 
 let expectedRowCount = 100_000
 let insertedRowCount = 20_000

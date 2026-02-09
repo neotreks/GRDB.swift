@@ -1,6 +1,6 @@
 import XCTest
 
-@testable import GRDB
+@testable import ATGRDB
 
 class SQLExpressionLiteralTests: GRDBTestCase {
     

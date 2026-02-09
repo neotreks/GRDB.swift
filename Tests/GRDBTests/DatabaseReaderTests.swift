@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 @TaskLocal private var localUUID = UUID()
 

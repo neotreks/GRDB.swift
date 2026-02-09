@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-@testable import GRDB
+@testable import ATGRDB
 
 private protocol StrategyProvider {
     static var strategy: DatabaseUUIDEncodingStrategy { get }

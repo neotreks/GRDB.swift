@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // BadlyMangledStuff.updateFromRow() accepts a row with mangled column names.
 // Its hasPersistentChangedValues flag is wrong.

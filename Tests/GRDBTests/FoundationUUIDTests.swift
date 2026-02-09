@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-import GRDB
+import ATGRDB
 
 class FoundationUUIDTests: GRDBTestCase {
     private func assert(_ value: (any DatabaseValueConvertible)?, isDecodedAs expectedUUID: UUID?) throws {

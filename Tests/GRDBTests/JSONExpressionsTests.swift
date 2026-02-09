@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 final class JSONExpressionsTests: GRDBTestCase {
     /// The SQL function used to build JSON expressions

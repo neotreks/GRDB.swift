@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class ArgumentsTests: XCTestCase {
     static let shortString = "foo"

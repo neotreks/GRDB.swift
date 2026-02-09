@@ -1,7 +1,7 @@
 #if SQLITE_ENABLE_FTS5
 import XCTest
 import Foundation
-import GRDB
+import ATGRDB
 
 // A custom wrapper tokenizer that ignores some tokens
 private final class StopWordsTokenizer : FTS5WrapperTokenizer {

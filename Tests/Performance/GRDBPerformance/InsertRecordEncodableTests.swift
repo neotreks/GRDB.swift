@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private let insertedRowCount = 50_000
 

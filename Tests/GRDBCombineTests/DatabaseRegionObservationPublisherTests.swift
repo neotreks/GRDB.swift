@@ -1,6 +1,6 @@
 #if canImport(Combine)
 import Combine
-import GRDB
+import ATGRDB
 import XCTest
 
 private struct Player: Codable, FetchableRecord, PersistableRecord {

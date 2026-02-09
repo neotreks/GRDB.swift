@@ -1,6 +1,6 @@
 import XCTest
 import Dispatch
-@testable import GRDB
+@testable import ATGRDB
 
 class ValueObservationTests: GRDBTestCase {
     // Test passes if it compiles.

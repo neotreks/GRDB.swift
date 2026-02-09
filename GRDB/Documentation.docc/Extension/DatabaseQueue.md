@@ -7,7 +7,7 @@ A database connection that serializes accesses to an SQLite database.
 Open a `DatabaseQueue` with the path to a database file:
 
 ```swift
-import GRDB
+import ATGRDB
 
 let dbQueue = try DatabaseQueue(path: "/path/to/database.sqlite")
 ```

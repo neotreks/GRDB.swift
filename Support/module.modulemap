@@ -1,4 +1,4 @@
-framework module GRDB {
+framework module ATGRDB {
     umbrella header "GRDB.h"
     
     export *

@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct DefaultPolicy: MutablePersistableRecord {
     var id: Int64?

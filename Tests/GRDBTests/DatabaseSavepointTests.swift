@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 func insertItem(_ db: Database, name: String) throws {
     try db.execute(sql: "INSERT INTO items (name) VALUES (?)", arguments: [name])

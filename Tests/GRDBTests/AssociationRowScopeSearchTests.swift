@@ -1,5 +1,5 @@
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 // a -> b* -> c
 //         -> d*

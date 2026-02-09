@@ -1,6 +1,6 @@
 #if SQLITE_ENABLE_FTS5
 import XCTest
-import GRDB
+import ATGRDB
 
 class FTS5PatternTests: GRDBTestCase {
     

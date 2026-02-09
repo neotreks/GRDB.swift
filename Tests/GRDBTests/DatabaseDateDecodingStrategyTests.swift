@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import GRDB // TODO: remove @testable when RowDecodingError is public
+@testable import ATGRDB // TODO: remove @testable when RowDecodingError is public
 
 private protocol StrategyProvider {
     static var strategy: DatabaseDateDecodingStrategy { get }

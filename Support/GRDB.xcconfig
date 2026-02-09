@@ -1,6 +1,6 @@
 #include "GRDBDeploymentTarget.xcconfig"
 INFOPLIST_FILE = Support/Info.plist
-PRODUCT_NAME = GRDB
+PRODUCT_NAME = ATGRDB
 PRODUCT_BUNDLE_IDENTIFIER = com.github.groue.$(PRODUCT_NAME:rfc1034identifier)
 MODULEMAP_FILE = $(SRCROOT)/Support/module.modulemap
 SWIFT_VERSION = 6.0

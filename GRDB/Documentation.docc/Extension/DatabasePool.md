@@ -7,7 +7,7 @@ A database connection that allows concurrent accesses to an SQLite database.
 Open a `DatabasePool` with the path to a database file:
 
 ```swift
-import GRDB
+import ATGRDB
 
 let dbPool = try DatabasePool(path: "/path/to/database.sqlite")
 ```

@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-@testable import GRDB
+@testable import ATGRDB
 
 private struct UseDefaultKeysRecord: PersistableRecord, Encodable {
     static var databaseColumnEncodingStrategy: DatabaseColumnEncodingStrategy { .useDefaultKeys }

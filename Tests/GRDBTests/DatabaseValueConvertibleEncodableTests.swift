@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-import GRDB
+import ATGRDB
 
 class DatabaseValueConvertibleEncodableTests: GRDBTestCase {
     func testDatabaseValueConvertibleImplementationDerivedFromEncodable1() {

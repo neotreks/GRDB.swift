@@ -1,6 +1,6 @@
 import XCTest
 import CoreGraphics
-import GRDB
+import ATGRDB
 
 class CGFloatTests: GRDBTestCase {
     

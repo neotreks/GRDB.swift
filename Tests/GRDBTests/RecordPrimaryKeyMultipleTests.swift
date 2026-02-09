@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // Citizenship has a multiple-column primary key.
 private class Citizenship : Record, Hashable {

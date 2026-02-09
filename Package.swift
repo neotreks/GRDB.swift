@@ -47,7 +47,7 @@ if ProcessInfo.processInfo.environment["SPI_BUILDER"] == "1" {
 }
 
 let package = Package(
-    name: "GRDB",
+    name: "ATGRDB",
     defaultLocalization: "en", // for tests
     platforms: [
         .iOS(.v13),
@@ -56,13 +56,13 @@ let package = Package(
         .watchOS(.v7),
     ],
     products: [
-        .library(name: "GRDB", targets: ["GRDB"]),
-        .library(name: "GRDB-dynamic", type: .dynamic, targets: ["GRDB"]),
+        .library(name: "ATGRDB", targets: ["ATGRDB"]),
+        .library(name: "ATGRDB-dynamic", type: .dynamic, targets: ["ATGRDB"]),
     ],
     dependencies: dependencies,
     targets: [
         .target(
-            name: "GRDB",
+            name: "ATGRDB",
             dependencies: [
                 .product(name: "AccuTerraSQLCipher", package: "sqlcipher-distribution")
             ],
@@ -73,7 +73,7 @@ let package = Package(
         ),
         .testTarget(
             name: "GRDBTests",
-            dependencies: ["GRDB"],
+            dependencies: ["ATGRDB"],
             path: "Tests",
             exclude: [
                 "CocoaPods",

@@ -1,5 +1,5 @@
 import Cocoa
-import GRDB
+import ATGRDB
 
 @NSApplicationMain
 class AppDelegate: NSObject, NSApplicationDelegate {

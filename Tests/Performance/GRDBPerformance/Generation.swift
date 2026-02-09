@@ -1,6 +1,6 @@
 import XCTest
 import Foundation
-import GRDB
+import ATGRDB
 #if GRDB_COMPARE
 import CoreData
 import RealmSwift

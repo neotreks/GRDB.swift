@@ -1,6 +1,6 @@
 // To run this playground, select and build the GRDB scheme.
 
-import GRDB
+import ATGRDB
 
 var configuration = Configuration()
 configuration.prepareDatabase { db in

@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // A -> B <- C -> D
 private struct A: Codable, FetchableRecord, PersistableRecord {

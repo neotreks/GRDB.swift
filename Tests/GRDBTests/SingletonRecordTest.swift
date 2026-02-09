@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct AppConfiguration: Codable {
     // Support for the single row guarantee

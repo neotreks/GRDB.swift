@@ -1,6 +1,6 @@
 // Inspired by https://github.com/groue/CombineExpectations
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 // MARK: - ValueObservationRecorder
 

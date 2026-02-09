@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct A: TableRecord {
     static let b = belongsTo(B.self)

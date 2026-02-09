@@ -1,4 +1,4 @@
-# ``GRDB``
+# ``ATGRDB``
 
 A toolkit for SQLite databases, with a focus on application development
 
@@ -35,7 +35,7 @@ Use this library to save your application’s permanent data into SQLite databas
 Start using the database in four steps:
 
 ```swift
-import GRDB
+import ATGRDB
 
 // 1. Open a database connection
 let dbQueue = try DatabaseQueue(path: "/path/to/database.sqlite")

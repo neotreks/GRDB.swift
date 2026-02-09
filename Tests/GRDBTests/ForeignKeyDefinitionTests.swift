@@ -1,5 +1,5 @@
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 class ForeignKeyDefinitionTests: GRDBTestCase {
     func testTable_belongsTo_hiddenRowID_plain() throws {

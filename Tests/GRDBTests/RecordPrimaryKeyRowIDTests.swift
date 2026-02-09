@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // Person has a RowID primary key, and an overridden insert() method.
 private class Person : Record, Hashable {

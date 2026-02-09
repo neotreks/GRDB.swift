@@ -2,7 +2,7 @@
 import AccuTerraSQLCipher
 
 import XCTest
-import GRDB
+import ATGRDB
 
 // A type that adopts DatabaseValueConvertible and StatementColumnConvertible
 private struct Fetched: DatabaseValueConvertible, StatementColumnConvertible, Hashable {

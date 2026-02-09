@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // TODO: test conversions from invalid UTF-8 blob to string
 

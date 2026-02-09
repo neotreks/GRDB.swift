@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private final class TestStream: TextOutputStream {
     var output: String

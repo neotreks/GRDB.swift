@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct Node: TableRecord {
     static let parent = belongsTo(Node.self)

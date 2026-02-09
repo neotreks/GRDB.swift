@@ -2,7 +2,7 @@
 import AccuTerraSQLCipher
 
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 class DatabasePoolReleaseMemoryTests: GRDBTestCase {
     

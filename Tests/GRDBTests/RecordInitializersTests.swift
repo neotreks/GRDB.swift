@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // Tests about how minimal can class go regarding their initializers
 

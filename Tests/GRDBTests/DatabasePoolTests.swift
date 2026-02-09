@@ -2,7 +2,7 @@
 import AccuTerraSQLCipher
 
 import XCTest
-import GRDB
+import ATGRDB
 
 class DatabasePoolTests: GRDBTestCase {
     func testJournalModeConfiguration() throws {

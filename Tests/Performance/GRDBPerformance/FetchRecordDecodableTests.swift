@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private let expectedRowCount = 200_000
 

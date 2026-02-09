@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct Author: FetchableRecord, PersistableRecord, Codable {
     var id: Int64

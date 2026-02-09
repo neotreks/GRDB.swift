@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 /// Test SQL generation
 class AssociationHasOneSQLTests: GRDBTestCase {

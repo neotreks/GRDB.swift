@@ -1,5 +1,5 @@
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 // https://github.com/rails/rails/blob/v6.0.0.rc1/activesupport/test/inflector_test.rb
 class InflectionsTests: GRDBTestCase {

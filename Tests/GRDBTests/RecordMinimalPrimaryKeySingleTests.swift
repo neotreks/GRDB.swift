@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // MinimalSingle is the most tiny class with a Single row primary key which
 // supports read and write operations of Record.

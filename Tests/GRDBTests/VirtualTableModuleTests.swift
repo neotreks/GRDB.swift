@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct FTS3TokenizeModule : VirtualTableModule {
     let moduleName = "fts3tokenize"

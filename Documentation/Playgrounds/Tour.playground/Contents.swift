@@ -11,7 +11,7 @@
 //:
 //: This playground is a quick tour of GRDB.
 
-import GRDB
+import ATGRDB
 import CoreLocation
 
 

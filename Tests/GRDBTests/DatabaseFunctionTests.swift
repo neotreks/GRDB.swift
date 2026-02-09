@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct CustomValueType : DatabaseValueConvertible {
     var databaseValue: DatabaseValue { "CustomValueType".databaseValue }

@@ -1,6 +1,6 @@
 import Foundation
 import Observation
-import GRDB
+import ATGRDB
 
 /// The observable model that drives the main navigation view.
 ///

@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class ValueObservationMapTests: GRDBTestCase {
     func testMap() throws {

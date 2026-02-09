@@ -1,5 +1,5 @@
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 private struct Reader : TableRecord {
     static let databaseTableName = "readers"

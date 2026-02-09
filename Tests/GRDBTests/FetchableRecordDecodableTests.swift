@@ -1,6 +1,6 @@
 import Foundation
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 class FetchableRecordDecodableTests: GRDBTestCase { }
 

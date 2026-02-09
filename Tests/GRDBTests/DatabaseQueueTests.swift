@@ -1,6 +1,6 @@
 import XCTest
 import Dispatch
-import GRDB
+import ATGRDB
 
 class DatabaseQueueTests: GRDBTestCase {
     func testJournalModeConfiguration() throws {

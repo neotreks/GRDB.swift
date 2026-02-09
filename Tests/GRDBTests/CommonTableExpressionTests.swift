@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class CommonTableExpressionTests: GRDBTestCase {
     func testInitializers() {

@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private enum CustomValue : Int, DatabaseValueConvertible, Equatable {
     case a = 0

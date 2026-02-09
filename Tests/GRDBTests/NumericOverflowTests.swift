@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // I think those there is no double between those two, and this is the exact threshold:
 private let maxInt64ConvertibleDouble = Double(9223372036854775295 as Int64)

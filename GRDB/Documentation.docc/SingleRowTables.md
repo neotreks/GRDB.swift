@@ -202,7 +202,7 @@ try db.create(table: "appConfiguration") { t in
 // AppConfiguration.swift
 //
 
-import GRDB
+import ATGRDB
 
 struct AppConfiguration: Codable {
     // Support for the single row guarantee

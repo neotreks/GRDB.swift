@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // Ordered hasManyThrough
 private struct Team: Codable, FetchableRecord, PersistableRecord, Equatable {

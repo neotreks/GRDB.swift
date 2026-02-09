@@ -103,7 +103,7 @@ struct Player: Identifiable {
 Applications that use both Tagged and GRDB will want to add those lines somewhere:
 
 ```swift
-import GRDB
+import ATGRDB
 import Tagged
 
 // Add database support to Tagged values

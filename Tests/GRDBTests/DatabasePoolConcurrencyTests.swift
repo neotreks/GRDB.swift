@@ -1,7 +1,7 @@
 import XCTest
 import Dispatch
 import Foundation
-@testable import GRDB
+@testable import ATGRDB
 
 class DatabasePoolConcurrencyTests: GRDBTestCase {
     

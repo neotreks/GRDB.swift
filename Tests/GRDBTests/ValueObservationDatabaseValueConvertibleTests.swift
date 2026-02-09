@@ -1,5 +1,5 @@
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 private struct Name: DatabaseValueConvertible, Equatable, CustomDebugStringConvertible {
     var rawValue: String

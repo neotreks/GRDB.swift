@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class Email : Record, Hashable {
     var email: String!

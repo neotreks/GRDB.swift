@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // MinimalNonOptionalPrimaryKeySingle is the most tiny class with a Single row
 // primary key (with non-optional primary key property) which supports read and

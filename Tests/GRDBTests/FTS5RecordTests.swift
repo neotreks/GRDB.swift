@@ -1,6 +1,6 @@
 #if SQLITE_ENABLE_FTS5
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct Book {
     var id: Int64?

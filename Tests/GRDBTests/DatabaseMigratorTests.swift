@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 class DatabaseMigratorTests : GRDBTestCase {
     // Test passes if it compiles.

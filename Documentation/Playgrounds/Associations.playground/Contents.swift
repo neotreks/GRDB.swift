@@ -6,7 +6,7 @@
 //: - Select the playground in the Playgrounds Group
 //: - Run the playground
 
-import GRDB
+import ATGRDB
 
 //: Open a database connection
 

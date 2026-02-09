@@ -3,7 +3,7 @@ import AccuTerraSQLCipher
 
 import Foundation
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 // Support for Database.logError
 struct SQLiteDiagnostic {

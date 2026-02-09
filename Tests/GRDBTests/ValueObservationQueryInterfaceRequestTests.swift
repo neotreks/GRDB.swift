@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 private struct Parent: TableRecord, FetchableRecord, Decodable, Equatable {
     static let children = hasMany(Child.self)

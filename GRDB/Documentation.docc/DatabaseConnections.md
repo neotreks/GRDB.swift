@@ -7,7 +7,7 @@ Open database connections to SQLite databases.
 GRDB provides two classes for accessing SQLite databases: ``DatabaseQueue`` and ``DatabasePool``:
 
 ```swift
-import GRDB
+import ATGRDB
 
 // Pick one:
 let dbQueue = try DatabaseQueue(path: "/path/to/database.sqlite")

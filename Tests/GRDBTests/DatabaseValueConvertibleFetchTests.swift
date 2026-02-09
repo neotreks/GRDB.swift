@@ -1,5 +1,5 @@
 import XCTest
-import GRDB
+import ATGRDB
 
 // A type that adopts DatabaseValueConvertible but does not adopt StatementColumnConvertible
 private struct Fetched: DatabaseValueConvertible, Hashable {

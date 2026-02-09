@@ -1,5 +1,5 @@
 import XCTest
-@testable import GRDB
+@testable import ATGRDB
 
 class PoolTests: XCTestCase {
     /// Returns a Pool whose elements are incremented integers: 1, 2, 3...

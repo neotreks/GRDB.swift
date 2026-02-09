@@ -1,4 +1,4 @@
-import GRDB
+import ATGRDB
 
 // This file contains types that subclass GRBD open classes. Test pass if this
 // file compiles without any error.
